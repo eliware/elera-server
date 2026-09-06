@@ -1,5 +1,7 @@
 # @eliware/elera
 
+Documentation: [docs](docs/README.md) · [specifications](specs/README.md) · [examples](examples/README.md)
+
 MariaDB/Elera container supervisor. It starts MariaDB, exposes liveness and
 readiness probes, and provides the control API used by the Elera ecosystem.
 
