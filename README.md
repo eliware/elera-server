@@ -1,4 +1,4 @@
-# @eliware/elera
+# @eliware/elera-server
 
 Documentation: [docs](docs/README.md) · [specifications](specs/README.md) · [examples](examples/README.md)
 
@@ -37,7 +37,7 @@ npm run pack
 The production image uses this repository as its Docker build context:
 
 ```bash
-docker build -f Dockerfile -t eliware/elera:local .
+docker build -f Dockerfile -t eliware/elera-server:local .
 ```
 
 The Docker Compose lab, backup images, HAProxy configuration, E2E scenarios,

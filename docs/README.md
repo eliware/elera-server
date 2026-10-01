@@ -1,6 +1,6 @@
 # Documentation
 
-This directory contains end-user documentation for `@eliware/elera`.
+This directory contains end-user documentation for `@eliware/elera-server`.
 
 ## Contents
 

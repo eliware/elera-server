@@ -1,5 +1,5 @@
 {
-    "name": "@eliware/elera",
+    "name": "@eliware/elera-server",
     "version": "0.1.6",
     "private": true,
     "description": "Non-root MariaDB and Galera container supervisor with health, readiness, routing, and cluster control APIs",
@@ -17,11 +17,11 @@
     ],
     "repository": {
         "type": "git",
-        "url": "https://github.com/eliware/elera.git"
+        "url": "https://github.com/eliware/elera-server.git"
     },
-    "homepage": "https://github.com/eliware/elera#readme",
+    "homepage": "https://github.com/eliware/elera-server#readme",
     "bugs": {
-        "url": "https://github.com/eliware/elera/issues"
+        "url": "https://github.com/eliware/elera-server/issues"
     },
     "license": "Apache-2.0",
     "type": "module",
