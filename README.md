@@ -1,5 +1,7 @@
 # @eliware/elera-server
 
+Package description: Non-root MariaDB and Galera container supervisor with health, readiness, routing, and cluster control APIs
+
 Documentation: [docs](docs/README.md) · [specifications](specs/README.md) · [examples](examples/README.md)
 
 MariaDB/Elera container supervisor. It starts MariaDB, exposes liveness and
@@ -90,4 +92,3 @@ shutdown, the supervisor drains routing, quiesces SQL, stops MariaDB with a
 bounded timeout, and then closes its listeners. See
 [`docs/runtime-contract.md`](docs/runtime-contract.md) for filesystem, ports,
 probe, secret, recovery, and shutdown requirements.
-
