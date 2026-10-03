@@ -70,6 +70,7 @@
       "endOfLine": "lf"
     },
     "eliware": {
+      "id": "E-1320",
       "apply": ["general", "application", "ghcr-published"]
     }
 }
