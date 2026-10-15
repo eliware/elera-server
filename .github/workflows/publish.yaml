@@ -1,0 +1,75 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - "v[0-9]*.[0-9]*.[0-9]*"
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: npm
+      - run: npm -g install npm@latest
+      - run: npm ci
+      - run: npm test
+
+  publish:
+    needs: validate
+    environment: ghcr-publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Verify release tag matches package version
+        run: >-
+          node -e "const version=require('./package.json').version;if(!/^(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)$/.test(version)||process.env.GITHUB_REF_NAME!=='v'+version)process.exit(1)"
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        id: push
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/eliware/elera-server:v12.0.0
+      - name: Attest published image
+        uses: actions/attest@v4
+        with:
+          subject-name: ghcr.io/eliware/elera-server
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+      - name: Verify version tag resolves to the pushed digest
+        run: test "$(docker buildx imagetools inspect ghcr.io/eliware/elera-server:v12.0.0 --format '{{.Manifest.Digest}}')" = "${{ steps.push.outputs.digest }}"
+      - name: Inspect image by digest
+        run: docker buildx imagetools inspect ghcr.io/eliware/elera-server@${{ steps.push.outputs.digest }}
+      - name: Verify signed image attestation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh attestation verify oci://ghcr.io/eliware/elera-server@${{ steps.push.outputs.digest }} --repo ${{ github.repository }}
+      - name: Record release handoff evidence
+        run: 'echo "${{ steps.push.outputs.digest }}" >> "$GITHUB_STEP_SUMMARY"'
