@@ -1,76 +1,108 @@
 {
-    "name": "@eliware/elera-server",
-    "version": "0.1.6",
-    "private": true,
-    "description": "Non-root MariaDB and Galera container supervisor with health, readiness, routing, and cluster control APIs",
-    "keywords": [
-      "eliware",
-      "elera",
-      "mariadb",
-      "mysql",
-      "galera",
-      "supervisor",
-      "kubernetes",
-      "routing",
-      "high-availability",
-      "non-root"
+  "name": "@eliware/elera-server",
+  "version": "13.0.0",
+  "type": "module",
+  "description": "Non-root MariaDB and Galera container supervisor with health, readiness, routing, and cluster control APIs",
+  "keywords": [
+    "eliware",
+    "elera",
+    "mariadb",
+    "mysql",
+    "galera",
+    "supervisor",
+    "kubernetes",
+    "routing",
+    "high-availability",
+    "non-root"
+  ],
+  "private": true,
+  "main": "./src/main.mjs",
+  "bin": {
+    "elera-server": "./bin/elera-server.mjs"
+  },
+  "scripts": {
+    "start": "node ./bin/elera-server.mjs",
+    "check": "node --check src/main.mjs",
+    "typecheck": "node --check src/main.mjs",
+    "contracts": "node scripts/verify-contracts.mjs",
+    "test": "eliware-test",
+    "lint": "eliware-test --lint",
+    "audit": "eliware-test --audit",
+    "pack": "npm pack --dry-run",
+    "format": "eliware-test --format",
+    "format:check": "eliware-test --format-check"
+  },
+  "engines": {
+    "node": ">=26"
+  },
+  "dependencies": {
+    "@eliware/common": "^12.0.1",
+    "@eliware/elera-lib": "^12.0.0",
+    "@eliware/snowflake": "^12.0.0",
+    "mysql2": "^3.24.6",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@eliware/elera-client": "^0.3.1",
+    "@eliware/test": "^12.0.0",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.mjs"
     ],
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/eliware/elera-server.git"
-    },
-    "homepage": "https://github.com/eliware/elera-server#readme",
-    "bugs": {
-        "url": "https://github.com/eliware/elera-server/issues"
-    },
-    "license": "Apache-2.0",
-    "type": "module",
-    "engines": {
-        "node": ">=26"
-    },
-    "scripts": {
-        "start": "node src/main.mjs",
-        "check": "node --check src/main.mjs",
-        "typecheck": "node --check src/main.mjs",
-        "contracts": "node scripts/verify-contracts.mjs",
-        "test": "eliware-test",
-        "lint": "eliware-test --lint",
-        "audit": "node scripts/run-audit.mjs",
-        "pack": "npm pack --dry-run"
-    },
-    "dependencies": {
-        "@eliware/common": "2.0.0",
-        "@eliware/elera-lib": "file:../elera-lib",
-        "@eliware/snowflake": "^2.0.0",
-        "mysql2": "^3.24.2",
-        "ws": "^8.21.3"
-    },
-    "devDependencies": {
-        "@eliware/elera-client": "^0.3.1",
-        "@eliware/test": "^5.0.0",
-        "ajv": "^8.20.0",
-        "ajv-formats": "^3.0.1"
-    },
-    "allowScripts": {
-        "unrs-resolver@1.12.2": true
-    },
-    "prettier": {
-      "printWidth": 100,
-      "tabWidth": 2,
-      "useTabs": false,
-      "semi": true,
-      "singleQuote": false,
-      "quoteProps": "as-needed",
-      "jsxSingleQuote": false,
-      "trailingComma": "all",
-      "bracketSpacing": true,
-      "bracketSameLine": false,
-      "arrowParens": "always",
-      "proseWrap": "preserve",
-      "endOfLine": "lf"
-    },
-    "eliware": {
-      "id": "E-1320",
-      "apply": ["general", "application", "ghcr-published"]
+    "collectCoverageFrom": [
+      "src/**/*.mjs"
+    ],
+    "coverageReporters": [
+      "text",
+      "json-summary"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 100,
+        "functions": 100,
+        "lines": 100,
+        "statements": 100
+      }
     }
+  },
+  "prettier": {
+    "printWidth": 100,
+    "tabWidth": 2,
+    "useTabs": false,
+    "semi": true,
+    "singleQuote": false,
+    "quoteProps": "as-needed",
+    "jsxSingleQuote": false,
+    "trailingComma": "all",
+    "bracketSpacing": true,
+    "bracketSameLine": false,
+    "arrowParens": "always",
+    "proseWrap": "preserve",
+    "endOfLine": "lf"
+  },
+  "author": "Eliware <eliware@eliware.org>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eliware/elera-server.git"
+  },
+  "homepage": "https://github.com/eliware/elera-server#readme",
+  "bugs": {
+    "url": "https://github.com/eliware/elera-server/issues"
+  },
+  "eliware": {
+    "id": "E-1321",
+    "apply": [
+      "general",
+      "application",
+      "ghcr-published"
+    ]
+  },
+  "allowScripts": {
+    "unrs-resolver@1.12.2": true
+  }
 }

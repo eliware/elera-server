@@ -1,3 +1,4 @@
+import { requestLocal } from "../../../test-fixtures/local-http-client.mjs";
 import { expect, jest, test } from "@jest/globals";
 import { createPendingInitServer } from "../../../src/lifecycle/pending-init/server.mjs";
 import {
@@ -6,12 +7,13 @@ import {
   withPendingInitServer,
 } from "../../../test-fixtures/pending-init-server-harness.mjs";
 
+jest.useFakeTimers();
 const node = "elera-0.cluster.local";
 const createServer = (options = {}) =>
   createPendingInitServer({ identity: { name: node }, ...options }).server;
 
 const post = (base, path, body = { confirm: true }, token = "root") =>
-  fetch(`${base}${path}`, {
+  requestLocal(`${base}${path}`, {
     method: "POST",
     headers: token ? rootHeaders(true) : { "content-type": "application/json" },
     body: JSON.stringify(body),
@@ -28,15 +30,15 @@ test("requires an identity and serves health and authenticated initialization", 
       onInitialized,
     }),
     async (base) => {
-      expect((await fetch(`${base}/healthz`)).status).toBe(200);
-      expect((await fetch(`${base}/readyz`)).status).toBe(503);
+      expect((await requestLocal(`${base}/healthz`)).status).toBe(200);
+      expect((await requestLocal(`${base}/readyz`)).status).toBe(503);
       expect((await post(base, "/api/v1/cluster/bootstrap", {}, null)).status).toBe(401);
       const response = await post(base, "/api/v1/cluster/bootstrap");
       expect(response.status).toBe(202);
       expect((await response.json()).operation).toBe("cluster.bootstrap");
       const standalone = await post(base, "/api/v1/initialization/apply");
       expect((await standalone.json()).operation).toBe("initialization.apply");
-      await new Promise((resolve) => setImmediate(resolve));
+      await Promise.resolve();
       expect(initialize).toHaveBeenCalledTimes(2);
       expect(onInitialized).toHaveBeenCalledWith("bootstrap");
       expect(onInitialized).toHaveBeenCalledWith("standalone-init");
@@ -54,14 +56,14 @@ test("serves evidence and reset routes and rejects unknown paths", async () => {
       nodeDataReset,
     }),
     async (base) => {
-      const evidence = await fetch(`${base}/api/v1/cluster/cold-bootstrap/evidence`, {
+      const evidence = await requestLocal(`${base}/api/v1/cluster/cold-bootstrap/evidence`, {
         headers: rootHeaders(),
       });
       expect(evidence.status).toBe(200);
       expect((await evidence.json()).data).toEqual({ state: "ready" });
       expect((await post(base, "/api/v1/node/data/reset", { dryRun: true })).status).toBe(200);
       expect(nodeDataReset.reset).toHaveBeenCalledWith({ dryRun: true });
-      expect((await fetch(`${base}/unknown`)).status).toBe(503);
+      expect((await requestLocal(`${base}/unknown`)).status).toBe(503);
     },
   );
 });
@@ -84,7 +86,7 @@ test("blocks bootstrap during recovery and serves recovery operations", async ()
       recoveryProtocol,
     }),
     async (base) => {
-      const status = await fetch(`${base}/api/v1/cluster/cold-recovery/status`, {
+      const status = await requestLocal(`${base}/api/v1/cluster/cold-recovery/status`, {
         headers: rootHeaders(),
       });
       expect((await status.json()).data).toEqual({ phase: "blocked" });
@@ -98,8 +100,8 @@ test("blocks bootstrap during recovery and serves recovery operations", async ()
         node: "elera-1.cluster.local",
       });
       expect(join.status).toBe(202);
-      expect((await fetch(`${base}/unknown`)).status).toBe(503);
-      await new Promise((resolve) => setImmediate(resolve));
+      expect((await requestLocal(`${base}/unknown`)).status).toBe(503);
+      await Promise.resolve();
       expect(recoveryProtocol.authorize).toHaveBeenCalledTimes(1);
       expect(recoveryProtocol.beginBootstrap).toHaveBeenCalledTimes(1);
       expect(recoveryProtocol.complete).toHaveBeenCalledTimes(1);

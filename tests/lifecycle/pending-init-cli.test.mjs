@@ -1,8 +1,8 @@
-import { expect, test } from '@jest/globals';
-import { readFile } from 'node:fs/promises';
+import { expect, jest, test } from "@jest/globals";
+import { runPendingInitCli } from "../../src/lifecycle/pending-init-cli.mjs";
 
-test('keeps the pending-init CLI as a thin runtime wrapper', async () => {
-  const source = await readFile(new URL('../../src/lifecycle/pending-init-cli.mjs', import.meta.url), 'utf8');
-  expect(source).toContain("import { startPendingInitRuntime } from \"./pending-init/runtime.mjs\";");
-  expect(source).toContain('startPendingInitRuntime();');
+test("starts the pending-init runtime", () => {
+  const start = jest.fn().mockReturnValue("started");
+  expect(runPendingInitCli(start)).toBe("started");
+  expect(start).toHaveBeenCalledTimes(1);
 });

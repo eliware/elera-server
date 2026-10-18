@@ -41,12 +41,8 @@ test("ignores unavailable and unrelated artifact routes", async () => {
       artifactStore: undefined,
     }),
   ).toBe(false);
-  expect(await handleArtifactRoute(context("PATCH", "/api/v1/secrets/a"))).toBe(
-    false,
-  );
-  expect(await handleArtifactRoute(context("GET", "/api/v1/secrets/a/b"))).toBe(
-    false,
-  );
+  expect(await handleArtifactRoute(context("PATCH", "/api/v1/secrets/a"))).toBe(false);
+  expect(await handleArtifactRoute(context("GET", "/api/v1/secrets/a/b"))).toBe(false);
 });
 test("rejects artifact operations without the required scope", async () => {
   expect(
@@ -61,7 +57,16 @@ test("rejects artifact operations without the required scope", async () => {
       auth: { scopes: ["backup:read"] },
     }),
   ).toBe(false);
-  expect(await handleArtifactRoute({ ...context("GET", "/api/v1/secrets/a"), auth: { scopes: [] } })).toBe(false);
-  expect(await handleArtifactRoute({ ...context("POST", "/api/v1/secrets/a/verify"), auth: { scopes: [] } })).toBe(false);
-  expect(await handleArtifactRoute({ ...context("PUT", "/api/v1/secrets/a"), auth: { scopes: [] } })).toBe(false);
+  expect(
+    await handleArtifactRoute({ ...context("GET", "/api/v1/secrets/a"), auth: { scopes: [] } }),
+  ).toBe(false);
+  expect(
+    await handleArtifactRoute({
+      ...context("POST", "/api/v1/secrets/a/verify"),
+      auth: { scopes: [] },
+    }),
+  ).toBe(false);
+  expect(
+    await handleArtifactRoute({ ...context("PUT", "/api/v1/secrets/a"), auth: { scopes: [] } }),
+  ).toBe(false);
 });

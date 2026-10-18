@@ -2,5 +2,12 @@
 
 - [Basic example](basic.mjs)
 
-This directory contains runnable Elera examples. Each example must document
-prerequisites, command, expected result, and cleanup behavior.
+## Basic example
+
+Prerequisite: Use Node.js 26 or later from the repository root.
+
+Command: Run `node examples/basic.mjs`.
+
+Expected result: The command prints a usage message.
+
+Cleanup: The command makes no changes.

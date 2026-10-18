@@ -1,11 +1,11 @@
 import { json } from "./api/http.mjs";
 import { isInternalPeerRequest } from "./api/internal-auth.mjs";
-import { authenticateControlRequest } from "./api/control-api-authentication.mjs";
-import { respondToControlApiError } from "./api/control-api-errors.mjs";
-import { dispatchControlRoute } from "./api/control-api-routing.mjs";
-import { handleControlCredentialRoute } from "./api/control-credentials.mjs";
-import { createControlRequestContext } from "./api/control-api-context.mjs";
-import { createControlResponse } from "./api/control-response.mjs";
+import { authenticateControlRequest } from "./api/control/api/authentication.mjs";
+import { respondToControlApiError } from "./api/control/api/errors.mjs";
+import { dispatchControlRoute } from "./api/control/api/routing.mjs";
+import { handleControlCredentialRoute } from "./api/control/credentials.mjs";
+import { createControlRequestContext } from "./api/control/api/context.mjs";
+import { createControlResponse } from "./api/control/response.mjs";
 export function createControlApi(options = {}) {
   const { identity, environment = process.env, log } = options;
   const dataDir = options.dataDir ?? environment.MARIADB_DATA_DIR ?? "/var/lib/mysql";

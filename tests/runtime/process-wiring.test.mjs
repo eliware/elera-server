@@ -1,7 +1,7 @@
-import { expect, jest, test } from '@jest/globals';
-import { createSupervisorProcess } from '../../src/runtime/process-wiring.mjs';
+import { expect, jest, test } from "@jest/globals";
+import { createSupervisorProcess } from "../../src/runtime/process-wiring.mjs";
 
-test('creates process and cold-bootstrap wiring with shared restart state', () => {
+test("creates process and cold-bootstrap wiring with shared restart state", () => {
   const recoveryState = { set: jest.fn() };
   const recoveryAudit = { failure: jest.fn() };
   let restarting = false;
@@ -15,19 +15,31 @@ test('creates process and cold-bootstrap wiring with shared restart state', () =
     recoveryState,
     recoveryAudit,
     isRestarting: () => restarting,
-    setRestarting: (value) => { restarting = value; },
-    createProcessImpl: (options) => { processOptions = options; return { start: jest.fn(), stop: jest.fn() }; },
-    createBootstrapImpl: (options) => { bootstrapOptions = options; return jest.fn(); },
+    setRestarting: (value) => {
+      restarting = value;
+    },
+    createProcessImpl: (options) => {
+      processOptions = options;
+      return { start: jest.fn(), stop: jest.fn() };
+    },
+    createBootstrapImpl: (options) => {
+      bootstrapOptions = options;
+      return jest.fn();
+    },
     onFatal,
   });
-  expect(result.processController).toEqual(expect.objectContaining({ start: expect.any(Function), stop: expect.any(Function) }));
+  expect(result.processController).toEqual(
+    expect.objectContaining({ start: expect.any(Function), stop: expect.any(Function) }),
+  );
   expect(result.bootstrapLocal).toEqual(expect.any(Function));
   expect(bootstrapOptions.isBusy()).toBe(false);
   bootstrapOptions.setBusy(true);
   expect(restarting).toBe(true);
   processOptions.onUnexpectedExit(7);
-  expect(recoveryState.set).toHaveBeenCalledWith('cluster-unavailable', { reason: 'mariadbd exited with 7' });
-  expect(recoveryAudit.failure).toHaveBeenCalledWith({ reason: 'mariadbd exited with 7' });
+  expect(recoveryState.set).toHaveBeenCalledWith("cluster-unavailable", {
+    reason: "mariadbd exited with 7",
+  });
+  expect(recoveryAudit.failure).toHaveBeenCalledWith({ reason: "mariadbd exited with 7" });
   expect(onFatal).not.toHaveBeenCalled();
   restarting = false;
   processOptions.onUnexpectedExit(null);
@@ -42,7 +54,10 @@ test('creates process and cold-bootstrap wiring with shared restart state', () =
     isRestarting: () => false,
     setRestarting: jest.fn(),
     onFatal,
-    createProcessImpl: (options) => { processOptions = options; return { start: jest.fn(), stop: jest.fn() }; },
+    createProcessImpl: (options) => {
+      processOptions = options;
+      return { start: jest.fn(), stop: jest.fn() };
+    },
     createBootstrapImpl: () => jest.fn(),
   });
   expect(quietProcess.processController).toBeDefined();

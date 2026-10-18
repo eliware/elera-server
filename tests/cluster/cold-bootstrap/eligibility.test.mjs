@@ -1,8 +1,64 @@
-import { evaluateColdBootstrap } from '../../../src/cluster/cold-bootstrap/eligibility.mjs';
-const nodes = [{ name: 'a.example.test', dataDir: '/a' }, { name: 'b.example.test', dataDir: '/b' }];
-test('requires every node to be offline and evaluates recovered seqnos', async () => { const result = await evaluateColdBootstrap(nodes, { isOnline: async () => false, readState: async (node) => ({ uuid: 'cluster', seqno: node.name === 'a.example.test' ? -1 : 8, safeToBootstrap: false }), recover: async () => ({ uuid: 'cluster', seqno: 9, recovered: true }) }); expect(result).toMatchObject({ eligible: true, candidate: { node: 'a.example.test', seqno: 9 } }); });
-test('refuses an online member before selecting a candidate', async () => { await expect(evaluateColdBootstrap(nodes, { isOnline: async (node) => node.name === 'b.example.test', readState: async () => ({ uuid: 'cluster', seqno: 1, safeToBootstrap: false }) })).resolves.toMatchObject({ eligible: false, reason: 'node is still online: b.example.test' }); });
-test('requires nodes and state readers', async () => { await expect(evaluateColdBootstrap([])).rejects.toThrow('nodes'); await expect(evaluateColdBootstrap(nodes)).rejects.toThrow(); });
-test('fails closed when a peer disappears during evidence collection', async () => { const result = await evaluateColdBootstrap(nodes, { isOnline: async () => false, readState: async () => { throw new Error('peer unavailable'); } }); expect(result).toMatchObject({ eligible: false, reason: 'node evidence unavailable: a' }); });
-test('uses the default offline check while recovering a negative seqno', async () => { const result = await evaluateColdBootstrap(nodes, { readState: async (node) => ({ uuid: 'cluster', seqno: node.name === 'a.example.test' ? -1 : 2, safeToBootstrap: false }), recover: async () => ({ uuid: 'cluster', seqno: 3 }) }); expect(result.eligible).toBe(true); });
-test('rejects non-FQDN or duplicate node identities before collecting evidence', async () => { await expect(evaluateColdBootstrap([{ name: 'a', dataDir: '/a' }], { readState: async () => ({ uuid: 'u', seqno: 1 }) })).rejects.toThrow('FQDN'); await expect(evaluateColdBootstrap([{ name: 'a.example.test' }, { name: 'a.example.test' }], { readState: async () => ({ uuid: 'u', seqno: 1 }) })).rejects.toThrow('FQDN'); });
+import { evaluateColdBootstrap } from "../../../src/cluster/cold-bootstrap/eligibility.mjs";
+const nodes = [
+  { name: "a.example.test", dataDir: "/a" },
+  { name: "b.example.test", dataDir: "/b" },
+];
+test("requires every node to be offline and evaluates recovered seqnos", async () => {
+  const result = await evaluateColdBootstrap(nodes, {
+    isOnline: async () => false,
+    readState: async (node) => ({
+      uuid: "cluster",
+      seqno: node.name === "a.example.test" ? -1 : 8,
+      safeToBootstrap: false,
+    }),
+    recover: async () => ({ uuid: "cluster", seqno: 9, recovered: true }),
+  });
+  expect(result).toMatchObject({ eligible: true, candidate: { node: "a.example.test", seqno: 9 } });
+});
+test("refuses an online member before selecting a candidate", async () => {
+  await expect(
+    evaluateColdBootstrap(nodes, {
+      isOnline: async (node) => node.name === "b.example.test",
+      readState: async () => ({ uuid: "cluster", seqno: 1, safeToBootstrap: false }),
+    }),
+  ).resolves.toMatchObject({ eligible: false, reason: "node is still online: b.example.test" });
+});
+test("requires nodes and state readers", async () => {
+  await expect(evaluateColdBootstrap([])).rejects.toThrow("nodes");
+  await expect(evaluateColdBootstrap(nodes)).rejects.toThrow();
+});
+test("fails closed when a peer disappears during evidence collection", async () => {
+  const result = await evaluateColdBootstrap(nodes, {
+    isOnline: async () => false,
+    readState: async () => {
+      throw new Error("peer unavailable");
+    },
+  });
+  expect(result).toMatchObject({
+    eligible: false,
+    reason: "node evidence unavailable: a.example.test",
+  });
+});
+test("uses the default offline check while recovering a negative seqno", async () => {
+  const result = await evaluateColdBootstrap(nodes, {
+    readState: async (node) => ({
+      uuid: "cluster",
+      seqno: node.name === "a.example.test" ? -1 : 2,
+      safeToBootstrap: false,
+    }),
+    recover: async () => ({ uuid: "cluster", seqno: 3 }),
+  });
+  expect(result.eligible).toBe(true);
+});
+test("rejects non-FQDN or duplicate node identities before collecting evidence", async () => {
+  await expect(
+    evaluateColdBootstrap([{ name: "a", dataDir: "/a" }], {
+      readState: async () => ({ uuid: "u", seqno: 1 }),
+    }),
+  ).rejects.toThrow("FQDN");
+  await expect(
+    evaluateColdBootstrap([{ name: "a.example.test" }, { name: "a.example.test" }], {
+      readState: async () => ({ uuid: "u", seqno: 1 }),
+    }),
+  ).rejects.toThrow("FQDN");
+});

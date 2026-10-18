@@ -22,12 +22,12 @@ any supervisor node
 elera-lib receives a bundle and connects directly to eligible MariaDB nodes
 ```
 
-HAProxy is not part of the MySQL data path. The supervisor quorum chooses
-eligible nodes and assigns one logical writer per application. `elera-lib`
-manages pools and connection-level failover within the unexpired bundle; it
-does not discover Elera topology or invent writer assignments.
+HAProxy does not transmit MySQL traffic. The supervisor quorum selects eligible
+nodes and assigns one writer to each application. `elera-lib` manages pools and
+connection failover while the bundle is valid. It does not find Elera topology
+or create writer assignments.
 
-REST is the management and recovery interface. The preferred routing channel
+HTTP API is the management and recovery interface. The preferred routing channel
 is an authenticated WebSocket through the same HTTP VIP:
 
 ```text
@@ -36,28 +36,27 @@ WebSocket /api/v1/routing/stream
 POST      /api/v1/routing/resync
 ```
 
-The stream carries versioned routing snapshots, writer changes, drain and
-recovery events, credential rotation notices, and heartbeats. It never carries
+The stream transmits versioned routing snapshots, writer changes, drain and
+recovery events, credential change notices, and heartbeats. It excludes
 SQL. SQL uses direct MariaDB connections on port `3306`. If the stream fails,
-the library reconnects with backoff and refreshes through REST before the
+the library reconnects with backoff and refreshes through HTTP API before the
 current bundle expires.
 
 Scoped bearer tokens are self-describing: the supervisor resolves the token's
-application and identity (and therefore its database and credential) without
-an identity query parameter. A root token may select an identity explicitly;
+application and identity (and so its database and credential) without
+an identity query parameter. A root token may select an identity explicitly.
 an identity selector that conflicts with a scoped token is rejected.
 
-On graceful node shutdown, the supervisor publishes a drain event, stops
-accepting new SQL work, allows active queries and transactions to complete,
-then closes pools and MariaDB. `elera-lib` immediately stops selecting the
-draining node for new work and uses the next ordered candidate.
+During graceful shutdown, the supervisor publishes a drain event and stops new SQL work.
+It lets active queries and transactions complete, then closes the pools and MariaDB.
+`elera-lib` stops selecting the draining node and chooses an ordered alternative.
 
 ## Supervisor configuration contract
 
 GitOps supplies supervisor intent through a Kubernetes ConfigMap for
 non-secret configuration and a Secret for tokens, passwords, TLS, and other
-sensitive material. The supervisor renders the uniform MariaDB and Elera
-files; generated files are runtime artifacts, not a second configuration
+sensitive material. The supervisor renders the same MariaDB and Elera
+files. Generated files are runtime artifacts, not a second configuration
 source.
 
 The reconciliation sequence is:
@@ -67,12 +66,14 @@ load -> validate -> canonicalize -> hash -> render -> validate generated files
      -> atomically activate -> reload or controlled restart -> verify readiness
 ```
 
-The MVP tracks desired and active hashes; a last-known-good rendered copy is
-retained for recovery. These hashes identify drift. Dynamic settings
-may use a graceful MariaDB reload. Listener, Elera provider, cluster
-identity, or node identity changes require a controlled restart. Unsafe
-bootstrap changes require explicit confirmation. Failed rendering or
-validation leaves the last known-good active configuration untouched.
+The MVP tracks needed and active hashes.
+It retains a last-known-good rendered copy for recovery.
+
+These hashes identify changes. Dynamic settings may use a graceful MariaDB reload.
+
+Listener, Elera provider, cluster identity, or node identity changes require controlled startup.
+
+Unsafe bootstrap changes require confirmation. Failed rendering or validation leaves the active configuration untouched.
 
 GitOps Secrets/operator-managed inputs are the initial home for SSH keys,
 `known_hosts`, TLS files, and backup configuration. The supervisor may store
@@ -87,7 +88,7 @@ The API base path is:
 /api/v1
 ```
 
-Every response includes `apiVersion` and should include a request identifier.
+Every response includes `apiVersion` and must include a request identifier.
 Breaking changes require a new API version.
 
 ## Authentication
@@ -103,7 +104,7 @@ Query-string token authentication is not supported.
 metadata initialization, full restore, and token administration. It is not
 stored in MariaDB.
 
-Normal tokens are stored as hashes and are bound to resources and scopes.
+Usual tokens are stored as hashes and are bound to resources and scopes.
 Plaintext tokens are returned only once when created or rotated.
 
 ### SQL scopes
@@ -129,7 +130,7 @@ accept writes in a Elera cluster.
 
 ## Response envelope
 
-Successful response:
+Correct response:
 
 ```json
 {
@@ -171,7 +172,7 @@ Error response:
 }
 ```
 
-Errors must never contain passwords, bearer tokens, private keys, or plaintext
+Errors must not contain passwords, bearer tokens, private keys, or plaintext
 encrypted artifacts.
 
 ## Common request rules
@@ -204,9 +205,9 @@ policy decision, not a topology-discovery API for the client.
   },
   "routes": {
     "primary": [
-    { "host": "sql0.internal", "port": 3306, "weight": 100 },
-    { "host": "sql1.internal", "port": 3306, "weight": 80 }
-  ],
+      { "host": "sql0.internal", "port": 3306, "weight": 100 },
+      { "host": "sql1.internal", "port": 3306, "weight": 80 }
+    ],
     "balanced": [
       { "host": "sql0.internal", "port": 3306, "weight": 100 },
       { "host": "sql1.internal", "port": 3306, "weight": 80 },
@@ -222,8 +223,8 @@ policy decision, not a topology-discovery API for the client.
 `elera-lib` sends writes only to ordered writer candidates and may use reader
 entries for reads. It may use unexpired entries for pool balancing and
 connection-level failover, but it must not invent a new writer assignment. It
-should refresh when the bundle is stale, expired, or all candidates fail. It
-must not automatically retry an in-flight mutation with unknown delivery
+must refresh when the bundle is stale, expired, or all candidates fail. It
+must not automatically retry an in-flight mutation with unknown sending
 status.
 
 Transactions remain pinned to one connection and one route. Unknown or
@@ -252,7 +253,7 @@ POST /api/v1/credentials/revoke
 GET  /api/v1/routes
 ```
 
-The API may return credentials directly over authenticated TLS or return an
+The API may return credentials directly more than authenticated TLS or return an
 encrypted envelope, but durable records must contain ciphertext only.
 
 ## Managed resources
@@ -329,9 +330,9 @@ reserved for explicit recovery-import paths.
 ```
 
 The artifact store contains age-encrypted ciphertext and metadata. The age
-private key remains with the CLI/operator or deployment Secret and is never
+private key remains with the CLI/operator or deployment Secret and is not
 persisted in `elera_meta`. SSH keys, `known_hosts`, TLS material, and backup
-configuration are supplied from GitOps/operator inputs; they are not returned
+configuration are supplied from GitOps/operator inputs. They are not returned
 by these endpoints.
 
 The implemented operations are:
@@ -365,7 +366,7 @@ not override local safety checks.
 
 Metadata and account restoration are logical operations. Raw restoration of
 the `mysql`, `sys`, `performance_schema`, or `information_schema` files is not
-the normal path.
+the usual path.
 
 ```text
 1. Restore elera_meta metadata
@@ -379,7 +380,7 @@ the normal path.
 9. Verify application access
 ```
 
-Large dump streams remain local to `elera-cli`; they do not pass through the
+Large dump streams remain local to `elera-cli`. They do not pass through the
 supervisor API as JSON.
 
 ## Operation contract
@@ -397,7 +398,7 @@ supervisor API as JSON.
 }
 ```
 
-Operation results are redacted and never contain secret material.
+Operation results are redacted and do not contain secret material.
 
 ```text
 GET  /api/v1/operations
@@ -407,10 +408,9 @@ POST /api/v1/operations/{operationId}/cancel
 
 ## Historical implementation sequence
 
-The following sequence records the original vertical-slice design. It is
-retained as project history, not as a statement that these steps are still
-pending or must be implemented in this order. Current completion status is
-tracked in `docs/feature-checklist.md`.
+This sequence records the initial vertical-slice plan. It remains as project history.
+It does not state that the steps remain pending or require this order.
+The current status appears in `docs/feature-checklist.md`.
 
 ```text
 1. Contract schemas and shared validation
@@ -429,14 +429,14 @@ tracked in `docs/feature-checklist.md`.
 
 ## Current async operation contract
 
-Supervisor operations that cannot complete within one request return `202`
-with `{ "apiVersion": "v1", "ok": true, "operationId": "...", "status": "queued" }`.
+Supervisor operations that require more than one request return `202` and a queued operation ID.
+The response includes `apiVersion: "v1"` and `ok: true`.
 Operation states are `queued`, `running`, `succeeded`, `failed`, and `cancelled`.
-Clients poll `GET /api/v1/operations/{operationId}` with bounded exponential
-backoff, an overall caller deadline, and no more than 30 attempts. A completed
-response uses `{ "apiVersion": "v1", "ok": true, "operationId": "...", "status": "succeeded", "data": {} }`;
-failure uses the same envelope with `ok: false` and a stable `error` string.
-The same idempotency key returns the original operation and result; a reused
-key with a different request is rejected. The first migration milestone uses
-existing synchronous application/database/identity/token/status APIs and does
-not require a migration endpoint or asynchronous operation resource.
+
+Clients poll `GET /api/v1/operations/{operationId}` with bounded exponential backoff.
+They use an overall deadline and no more than 30 attempts. A completed response includes the result.
+A failed response uses the same envelope with `ok: false` and a stable error string.
+
+The same idempotency key returns the initial operation and result. A reused key with a different request fails.
+The first migration milestone uses the existing synchronous application, database, identity, token, and status APIs.
+It does not require a migration endpoint or an asynchronous operation resource.

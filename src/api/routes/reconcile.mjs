@@ -1,7 +1,6 @@
 import { readBody } from "../http.mjs";
 
-const allowed = (auth) =>
-  auth?.root || auth?.scopes?.includes("metadata:reconcile");
+const allowed = (auth) => auth?.root || auth?.scopes?.includes("metadata:reconcile");
 
 function desiredPayload(body, fallback) {
   if (body.desired !== null && body.desired !== undefined) return body.desired;
@@ -9,25 +8,16 @@ function desiredPayload(body, fallback) {
 }
 
 function accountPayload(body) {
-  if (body.accounts !== null && body.accounts !== undefined)
-    return body.accounts;
+  if (body.accounts !== null && body.accounts !== undefined) return body.accounts;
   if (body.desired?.accounts !== null && body.desired?.accounts !== undefined)
     return body.desired.accounts;
   return [];
 }
 
-export async function handleReconcileRoute({
-  method,
-  path,
-  request,
-  response,
-  auth,
-  reconciler,
-}) {
+export async function handleReconcileRoute({ method, path, request, response, auth, reconciler }) {
   if (
     !reconciler ||
-    (!path.startsWith("/api/v1/reconcile/") &&
-      !path.startsWith("/api/v1/restores/"))
+    (!path.startsWith("/api/v1/reconcile/") && !path.startsWith("/api/v1/restores/"))
   )
     return false;
   if (!allowed(auth)) return false;

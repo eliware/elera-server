@@ -1,0 +1,143 @@
+import { jest, expect, test } from "@jest/globals";
+import { join } from "node:path";
+import { installMemoryFileSystem } from "../../../test-fixtures/memory-filesystem.mjs";
+
+const __memoryFs = installMemoryFileSystem(jest);
+jest.unstable_mockModule("node:fs/promises", () => __memoryFs);
+jest.unstable_mockModule("node:fs", () => __memoryFs);
+jest.unstable_mockModule("node:os", () => ({ tmpdir: () => "/tmp" }));
+const { mkdtemp, rm, writeFile } = __memoryFs;
+const tmpdir = () => "/tmp";
+const { createLocalRecoveryEvidence } =
+  await import("../../../src/cluster/cold-bootstrap/local-recovery-evidence.mjs");
+
+jest.useFakeTimers();
+test("requires local identity, data path, and health", () => {
+  expect(() => createLocalRecoveryEvidence()).toThrow("local data");
+});
+
+test("collects local state, recovers unknown sequence numbers, and reports health", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "elera-evidence-"));
+  try {
+    await writeFile(join(dir, "grastate.dat"), "uuid: abc\nseqno: -1\nsafe_to_bootstrap: 0\n");
+    let calls = 0;
+    const evidence = createLocalRecoveryEvidence({
+      localNode: { name: "one.example.test" },
+      dataDir: dir,
+      health: {
+        status: async () => ({ ready: false, values: { wsrep_cluster_status: "Non-Primary" } }),
+      },
+      run: async () => {
+        calls += 1;
+        return "WSREP: Recovered position: abc:12";
+      },
+    });
+    await expect(evidence()).resolves.toMatchObject({
+      node: "one.example.test",
+      active: false,
+      state: { recoveredSeqno: 12 },
+      generation: 1,
+    });
+    await expect(evidence()).resolves.toMatchObject({
+      node: "one.example.test",
+      active: false,
+      state: { recoveredSeqno: 12 },
+      generation: 2,
+    });
+    expect(calls).toBe(1);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("does not run wsrep recovery for an active peer with an unknown saved sequence", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "elera-evidence-"));
+  try {
+    await writeFile(join(dir, "grastate.dat"), "uuid: abc\nseqno: -1\nsafe_to_bootstrap: 0\n");
+    const run = async () => {
+      throw new Error("must not recover an active peer");
+    };
+    const evidence = createLocalRecoveryEvidence({
+      localNode: { name: "one.example.test" },
+      dataDir: dir,
+      health: {
+        status: async () => ({
+          ready: true,
+          values: {
+            wsrep_local_state_comment: "Synced",
+            wsrep_cluster_status: "Primary",
+            wsrep_ready: "ON",
+          },
+        }),
+      },
+      run,
+    });
+    await expect(evidence()).resolves.toMatchObject({
+      node: "one.example.test",
+      active: true,
+      state: { savedSeqno: -1, recoveredSeqno: undefined },
+    });
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("does not rerun a failed wsrep recovery probe for every live evidence request", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "elera-evidence-"));
+  try {
+    await writeFile(join(dir, "grastate.dat"), "uuid: abc\nseqno: -1\nsafe_to_bootstrap: 0\n");
+    let calls = 0;
+    const evidence = createLocalRecoveryEvidence({
+      localNode: { name: "one.example.test" },
+      dataDir: dir,
+      health: {
+        status: async () => ({ ready: false, values: { wsrep_cluster_status: "Non-Primary" } }),
+      },
+      run: async () => {
+        calls += 1;
+        throw new Error("wsrep-recover timed out");
+      },
+    });
+
+    await expect(evidence()).rejects.toThrow("wsrep-recover timed out");
+    await expect(evidence()).rejects.toThrow("wsrep-recover timed out");
+    expect(calls).toBe(1);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("shares one in-flight wsrep recovery probe across concurrent live evidence requests", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "elera-evidence-"));
+  try {
+    await writeFile(join(dir, "grastate.dat"), "uuid: abc\nseqno: -1\nsafe_to_bootstrap: 0\n");
+    let calls = 0;
+    const releases = [];
+    const evidence = createLocalRecoveryEvidence({
+      localNode: { name: "one.example.test" },
+      dataDir: dir,
+      health: {
+        status: async () => ({ ready: false, values: { wsrep_cluster_status: "Non-Primary" } }),
+      },
+      run: async () => {
+        calls += 1;
+        await new Promise((resolve) => {
+          releases.push(resolve);
+        });
+        throw new Error("wsrep-recover timed out");
+      },
+    });
+
+    const first = evidence();
+    const second = evidence();
+    for (let attempt = 0; attempt < 100 && (calls < 1 || releases.length < 1); attempt += 1)
+      await Promise.resolve();
+    expect(releases).toHaveLength(1);
+    releases.forEach((release) => release());
+    await expect(first).rejects.toThrow("wsrep-recover timed out");
+    await expect(second).rejects.toThrow("wsrep-recover timed out");
+    expect(calls).toBe(1);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

@@ -1,1 +1,3 @@
-export async function ensureReplicationAccounts() { return []; }
+export async function ensureReplicationAccounts() {
+  return [];
+}

@@ -1,0 +1,77 @@
+import { expect, jest, test } from "@jest/globals";
+import { resolveCleanRestart } from "../../../src/runtime/clean-restart/recovery.mjs";
+
+const peer = [{ node: "peer", active: true, galera: { clusterStatus: "Primary" } }];
+test("returns no decision without a marker", async () => {
+  await expect(
+    resolveCleanRestart({ restartMarker: { read: async () => undefined } }),
+  ).resolves.toBeUndefined();
+});
+test("supports an omitted marker provider", async () => {
+  await expect(resolveCleanRestart({})).resolves.toBeUndefined();
+});
+test("joins after validated peer and consumes marker", async () => {
+  const consume = jest.fn();
+  const protocol = { evidence: jest.fn(async () => peer) };
+  await expect(
+    resolveCleanRestart({
+      restartMarker: { read: async () => ({ nonce: "n" }), consume },
+      recoveryProtocol: protocol,
+      identity: { name: "local" },
+      startupTimeoutMs: 1000,
+    }),
+  ).resolves.toMatchObject({ mode: "join" });
+  expect(consume).toHaveBeenCalledWith({ expectedNonce: "n" });
+});
+test("supports legacy consume markers and failed evidence", async () => {
+  const sleep = jest.fn(async () => {});
+  const protocol = { evidence: jest.fn().mockRejectedValue(new Error("offline")) };
+  await expect(
+    resolveCleanRestart({
+      restartMarker: { consume: async () => ({ nonce: "n" }) },
+      recoveryProtocol: protocol,
+      identity: { name: "local" },
+      sleep,
+    }),
+  ).resolves.toBeUndefined();
+  expect(sleep).not.toHaveBeenCalled();
+});
+test("supports legacy consume markers when a peer is available", async () => {
+  const consume = jest.fn();
+  const protocol = { evidence: jest.fn(async () => peer) };
+  await expect(
+    resolveCleanRestart({
+      restartMarker: { consume: async () => ({ nonce: "n" }) },
+      recoveryProtocol: protocol,
+      identity: { name: "local" },
+    }),
+  ).resolves.toMatchObject({ mode: "join" });
+  expect(consume).not.toHaveBeenCalled();
+});
+test("uses the bounded default wait when a peer is not yet available", async () => {
+  const protocol = {
+    evidence: jest.fn(async () => [
+      { node: "local", active: false, galera: { clusterStatus: "Non-Primary" } },
+    ]),
+  };
+  const log = { debug: jest.fn(), warn: jest.fn() };
+  await expect(
+    resolveCleanRestart({
+      restartMarker: { read: async () => ({ nonce: "n" }) },
+      recoveryProtocol: protocol,
+      identity: { name: "local" },
+      startupTimeoutMs: 1001,
+      log,
+    }),
+  ).resolves.toBeUndefined();
+  expect(log.debug).toHaveBeenCalledWith(
+    expect.stringContaining("Clean startup peer is not a validated Primary"),
+    expect.objectContaining({
+      evidence: [{ node: "local", active: false, clusterStatus: "Non-Primary" }],
+    }),
+  );
+  expect(log.warn).toHaveBeenCalledWith(
+    expect.stringContaining("Clean startup marker found no active Primary peer"),
+    expect.objectContaining({ attempts: 2 }),
+  );
+});

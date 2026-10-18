@@ -1,5 +1,8 @@
 const modes = new Set(["bootstrap", "join", "standalone"]);
-const isFqdn = (value) => typeof value === 'string' && value.includes('.') && value.split('.').every((label) => /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label));
+const isFqdn = (value) =>
+  typeof value === "string" &&
+  value.includes(".") &&
+  value.split(".").every((label) => /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label));
 
 export function explicitStartupDecision(environment = process.env, nodeName) {
   const mode = environment.ELERA_EXPLICIT_START_MODE;

@@ -14,7 +14,7 @@ RUN apt-get update \
     && mkdir -p /run/mysqld /run/elera /var/lib/mysql /etc/elera \
     && chown -R mysql:mysql /run/mysqld /run/elera /var/lib/mysql /etc/elera
 
-COPY docker/mariadb-entrypoint.mjs /usr/local/bin/mariadb-entrypoint.mjs
+COPY src/docker/mariadb-entrypoint.mjs /usr/local/bin/mariadb-entrypoint.mjs
 COPY package.json package-lock.json /app/
 RUN cd /app && npm ci --omit=dev
 COPY src /app/src

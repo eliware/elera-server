@@ -1,0 +1,9 @@
+version: "13.0"
+description: Defines requirements for @eliware/elera-server.
+directives:
+  - id: E-1321.0
+    dos:
+      - Keep public behavior same with the package README.
+      - Validate the package with npm test before commit.
+    donts:
+      - Do not expose secrets, tokens, or private data.

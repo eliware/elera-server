@@ -1,0 +1,158 @@
+import { expect, jest, test } from "@jest/globals";
+jest.useFakeTimers();
+import { handleRoutingRoute } from "../../../../src/api/routes/routing.mjs";
+import { handleRoutingInspection } from "../../../../src/api/routes/routing/inspection.mjs";
+
+const request = (body = {}) => ({
+  url: "http://localhost/api",
+  async *[Symbol.asyncIterator]() {
+    if (Object.keys(body).length) yield JSON.stringify(body);
+  },
+});
+const node = {
+  nodeId: "n.example.test",
+  clusterId: "c",
+  address: "n.example.test",
+  sqlPort: 3306,
+  synced: true,
+  primary: "Primary",
+  health: "ok",
+  observedAt: Date.now(),
+};
+const context = (method, path, observations = [node], body = {}) => {
+  const response = { json: jest.fn() };
+  const observationStore = { snapshot: () => observations, upsert: jest.fn() };
+  return {
+    method,
+    path,
+    url: new URL(`http://localhost${path}`),
+    identity: { name: "n.example.test" },
+    request: request(body),
+    response,
+    observationStore,
+    getStatus: jest.fn(async () => ({
+      ready: true,
+      values: {
+        wsrep_local_state_comment: "Synced",
+        wsrep_cluster_status: "Primary",
+      },
+    })),
+    routingBundles: {
+      lease: jest.fn(async () => ({
+        routes: { primary: [{ host: "n.example.test", port: 3306 }] },
+        bundleVersion: "v1",
+        expiresAt: "2099-01-01",
+      })),
+    },
+    routingEvent: jest.fn(() => undefined),
+    environment: {
+      ELERA_CLUSTER_SIZE: "1",
+      ELERA_NODE_SQL_PORT: "3306",
+      ELERA_PEERS: "",
+    },
+  };
+};
+
+test("serves calculated routes, refreshes bundles, and validates bundle identity", async () => {
+  const healthy = context("GET", "/api/v1/routes");
+  healthy.url = new URL("http://localhost/api/v1/routes?application=app");
+  expect(await handleRoutingRoute(healthy)).toBe(true);
+  expect(healthy.response.json).toHaveBeenCalledWith(
+    200,
+    expect.objectContaining({ operation: "routes.inspect" }),
+  );
+  const refresh = context("POST", "/api/v1/routes/refresh", [], {
+    identity: "id",
+  });
+  expect(await handleRoutingRoute(refresh)).toBe(true);
+  expect(refresh.response.json).toHaveBeenCalledWith(
+    200,
+    expect.objectContaining({ operation: "routes.refresh" }),
+  );
+  const bundle = context("GET", "/api/v1/routing/bundle");
+  bundle.url = new URL("http://localhost/api/v1/routing/bundle?identity=id");
+  expect(await handleRoutingRoute(bundle)).toBe(true);
+  await expect(handleRoutingRoute(context("GET", "/api/v1/routing/bundle"))).rejects.toMatchObject({
+    statusCode: 400,
+  });
+});
+test("resolves a scoped token identity without a query selector and rejects mismatches", async () => {
+  const scoped = context("GET", "/api/v1/routing/bundle");
+  scoped.auth = { application: "payments", identity: "runtime" };
+  expect(await handleRoutingRoute(scoped)).toBe(true);
+  expect(scoped.routingBundles.lease).toHaveBeenCalledWith({
+    identity: "runtime",
+    application: "payments",
+    database: undefined,
+  });
+  const mismatch = context("GET", "/api/v1/routing/bundle");
+  mismatch.url = new URL("http://localhost/api/v1/routing/bundle?identity=other");
+  mismatch.auth = { application: "payments", identity: "runtime" };
+  await expect(handleRoutingRoute(mismatch)).rejects.toMatchObject({ statusCode: 403 });
+});
+test("uses local fallback when no eligible observations remain", async () => {
+  const c = context("GET", "/api/v1/routes", [{ ...node, synced: false }]);
+  expect(await handleRoutingRoute(c)).toBe(true);
+  expect(c.response.json).toHaveBeenCalledWith(
+    200,
+    expect.objectContaining({
+      data: expect.objectContaining({ bundleVersion: "default:local" }),
+    }),
+  );
+  const noFallback = context("GET", "/api/v1/routes", []);
+  noFallback.getStatus.mockResolvedValue({ ready: false });
+  await expect(handleRoutingRoute(noFallback)).resolves.toBe(true);
+});
+test("returns false for unrelated routing requests", async () => {
+  expect(await handleRoutingRoute(context("GET", "/other"))).toBe(false);
+  expect(await handleRoutingRoute(context("PUT", "/api/v1/routes"))).toBe(false);
+});
+test("delegates route inspection to the observation and decision policies", async () => {
+  const response = { json: jest.fn() };
+  const identity = { name: "a.example.test" };
+  const observations = [
+    {
+      nodeId: identity.name,
+      clusterId: "c",
+      address: identity.name,
+      sqlPort: 3306,
+      synced: true,
+      primary: "Primary",
+      health: "ok",
+      observedAt: Date.now(),
+    },
+  ];
+  await expect(
+    handleRoutingInspection({
+      url: new URL("http://localhost/api/v1/routes?application=app"),
+      response,
+      identity,
+      observationStore: { snapshot: () => observations, upsert: jest.fn() },
+      getStatus: async () => ({ ready: true }),
+      environment: {},
+      getConfig: () => ({ httpPort: 8080 }),
+    }),
+  ).resolves.toBe(true);
+  expect(response.json).toHaveBeenCalled();
+});
+
+test("uses seeded and cached routes and refreshes from peers", async () => {
+  const seed = {
+    primary: [{ host: "seed.example.test", port: 3306 }],
+    balanced: [{ host: "seed.example.test", port: 3306 }],
+  };
+  const seeded = context("GET", "/api/v1/routes", []);
+  seeded.routingEvent = () => ({ routes: seed });
+  await handleRoutingRoute(seeded);
+  expect(seeded.response.json).toHaveBeenCalledWith(200, expect.objectContaining({ data: seed }));
+  const cached = context("GET", "/api/v1/routes", []);
+  cached.routingEvent = () => undefined;
+  await handleRoutingRoute(cached);
+  expect(cached.response.json).toHaveBeenCalled();
+  const peer = context("GET", "/api/v1/routes", []);
+  peer.environment.ELERA_PEERS = "http://peer.example.test";
+  peer.getStatus.mockRejectedValue(new Error("status unavailable"));
+  peer.fetchImpl = undefined;
+  peer.observationStore.snapshot = () => [node];
+  await handleRoutingRoute(peer);
+});

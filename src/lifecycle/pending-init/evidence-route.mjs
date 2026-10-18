@@ -12,7 +12,7 @@ export async function handlePendingInitEvidenceRoute(
     return true;
   }
   if (typeof coldEvidence !== "function") {
-    json(response, 503, { ok: false, error: "cold bootstrap evidence is unavailable" });
+    json(response, 503, { ok: false, error: "cold bootstrap data is unavailable" });
     return true;
   }
   try {

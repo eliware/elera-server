@@ -1,11 +1,17 @@
-const nonNegative = (value) => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
+const nonNegative = (value) => (Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0);
 
 export function normalizeTelemetryReport(report, receivedAt) {
-  if (!report || report.type !== 'client.telemetry' || typeof report.application !== 'string' || !report.application) return undefined;
+  if (
+    !report ||
+    report.type !== "client.telemetry" ||
+    typeof report.application !== "string" ||
+    !report.application
+  )
+    return undefined;
   return {
     application: report.application,
-    credentialName: typeof report.credentialName === 'string' ? report.credentialName : undefined,
-    database: typeof report.database === 'string' ? report.database : undefined,
+    credentialName: typeof report.credentialName === "string" ? report.credentialName : undefined,
+    database: typeof report.database === "string" ? report.database : undefined,
     scopes: Array.isArray(report.scopes) ? [...report.scopes] : undefined,
     queries: nonNegative(report.queries),
     failures: nonNegative(report.failures),
@@ -15,7 +21,7 @@ export function normalizeTelemetryReport(report, receivedAt) {
     failoverCount: nonNegative(report.failoverCount),
     inflight: nonNegative(report.inflight),
     avgLatencyMs: nonNegative(report.avgLatencyMs),
-    sentAt: typeof report.sentAt === 'string' ? report.sentAt : undefined,
+    sentAt: typeof report.sentAt === "string" ? report.sentAt : undefined,
     receivedAt,
   };
 }

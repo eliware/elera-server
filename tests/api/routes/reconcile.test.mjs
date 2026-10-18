@@ -39,9 +39,7 @@ test("handles reconcile and metadata/account restore plans and applies", async (
       }),
     ).toBe(false);
   }
-  expect(
-    await handleReconcileRoute(make("GET", "/api/v1/reconcile/plan")),
-  ).toBe(false);
+  expect(await handleReconcileRoute(make("GET", "/api/v1/reconcile/plan"))).toBe(false);
   expect(
     await handleReconcileRoute({
       ...make("POST", "/api/v1/reconcile/plan"),
@@ -55,8 +53,8 @@ test("handles empty, wrapped, and failed verification payloads", async () => {
   expect(await handleReconcileRoute(failed)).toBe(true);
   const malformed = make("POST", "/api/v1/reconcile/plan");
   malformed.request = {
-    async *[Symbol.asyncIterator]() {
-      throw new Error("bad json");
+    [Symbol.asyncIterator]() {
+      return { next: () => Promise.reject(new Error("bad json")) };
     },
   };
   expect(await handleReconcileRoute(malformed)).toBe(true);
@@ -66,9 +64,7 @@ test("handles empty, wrapped, and failed verification payloads", async () => {
     "/api/v1/restores/accounts/verify",
   ])
     expect(
-      await handleReconcileRoute(
-        make("POST", path, { desired: { accounts: [{ user: "u" }] } }),
-      ),
+      await handleReconcileRoute(make("POST", path, { desired: { accounts: [{ user: "u" }] } })),
     ).toBe(true);
 });
 test("exercises unwrapped and missing restore payload defaults", async () => {
@@ -77,18 +73,14 @@ test("exercises unwrapped and missing restore payload defaults", async () => {
     "/api/v1/reconcile/apply",
     "/api/v1/reconcile/verify",
   ])
-    expect(
-      await handleReconcileRoute(make("POST", path, { accounts: [] })),
-    ).toBe(true);
+    expect(await handleReconcileRoute(make("POST", path, { accounts: [] }))).toBe(true);
   for (const path of [
     "/api/v1/restores/accounts/plan",
     "/api/v1/restores/accounts/apply",
     "/api/v1/restores/accounts/verify",
   ]) {
     expect(
-      await handleReconcileRoute(
-        make("POST", path, { desired: { accounts: [{ user: "u" }] } }),
-      ),
+      await handleReconcileRoute(make("POST", path, { desired: { accounts: [{ user: "u" }] } })),
     ).toBe(true);
     expect(await handleReconcileRoute(make("POST", path, {}))).toBe(true);
   }
@@ -100,10 +92,7 @@ test("returns unavailable for failed account restore verification and null paylo
   });
   failed.reconciler.verify.mockResolvedValue({ verified: false });
   expect(await handleReconcileRoute(failed)).toBe(true);
-  for (const path of [
-    "/api/v1/restores/accounts/plan",
-    "/api/v1/restores/accounts/apply",
-  ])
+  for (const path of ["/api/v1/restores/accounts/plan", "/api/v1/restores/accounts/apply"])
     expect(
       await handleReconcileRoute(
         make("POST", path, {
@@ -119,19 +108,15 @@ test("covers null desired and nested account defaults", async () => {
     "/api/v1/reconcile/apply",
     "/api/v1/reconcile/verify",
   ]) {
-    expect(
-      await handleReconcileRoute(make("POST", path, { desired: null })),
-    ).toBe(true);
+    expect(await handleReconcileRoute(make("POST", path, { desired: null }))).toBe(true);
   }
   for (const path of [
     "/api/v1/restores/accounts/plan",
     "/api/v1/restores/accounts/apply",
     "/api/v1/restores/accounts/verify",
   ]) {
-    expect(
-      await handleReconcileRoute(
-        make("POST", path, { accounts: null, desired: null }),
-      ),
-    ).toBe(true);
+    expect(await handleReconcileRoute(make("POST", path, { accounts: null, desired: null }))).toBe(
+      true,
+    );
   }
 });

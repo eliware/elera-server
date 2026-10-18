@@ -1,94 +1,87 @@
-# @eliware/elera-server
+# [![eliware.org](https://eliware.org/logos/brand.png)](https://discord.gg/M6aTR9eTwN)
 
-Package description: Non-root MariaDB and Galera container supervisor with health, readiness, routing, and cluster control APIs
+## @eliware/elera-server [![License](https://img.shields.io/github/license/eliware/elera-server)](https://github.com/eliware/elera-server/blob/main/LICENSE) [![CI](https://github.com/eliware/elera-server/actions/workflows/ci.yaml/badge.svg)](https://github.com/eliware/elera-server/actions/workflows/ci.yaml)
 
-Documentation: [docs](docs/README.md) · [specifications](specs/README.md) · [examples](examples/README.md)
+Non-root MariaDB and Galera container supervisor with health, readiness, routing, and cluster control APIs
 
-MariaDB/Elera container supervisor. It starts MariaDB, exposes liveness and
-readiness probes, and provides the control API used by the Elera ecosystem.
+## Table of Contents
 
-The target architecture uses HAProxy as an HTTP-only proxy for supervisor
-nodes. REST remains the management interface; `@eliware/elera-lib`
-preferentially keeps an authenticated WebSocket open for routing events and
-falls back to REST bundle refreshes. The library connects directly to MariaDB;
-HAProxy does not proxy raw MySQL traffic.
+- [Features](#features)
+- [Requirements](#requirements)
+- [Setup](#setup)
+- [Usage](#usage)
+- [Development](#development)
+- [Testing](#testing)
+- [Troubleshooting](#troubleshooting)
+- [Security](#security)
+- [Configuration](#configuration)
+- [Operations](#operations)
+- [Support](#support)
+- [Links](#links)
+- [License](#license)
+
+## Features
+
+Non-root MariaDB and Galera container supervisor with health, readiness, routing, and cluster control APIs.
+
+## Requirements
+
+- Use Node.js 26 or later.
+- Run the supervisor in a Linux container.
+
+## Setup
+
+Run npm ci to install the locked packages.
+
+## Usage
+
+Build the container image from this repository root.
+Pull `ghcr.io/eliware/elera-server:v13.0.0` for Linux on `amd64`.
+Use an immutable version tag and recorded SHA-256 digest for deployment.
+GHCR package settings control image visibility and pull access.
+Read the [documentation index](docs/README.md) and [specification index](specs/README.md).
+Read [release notes](RELEASE_NOTES.md) for released changes.
 
 ## Development
 
-Requires Node.js 26.
+Keep code and tests in their assigned folders.
 
-## Supported runtime boundary
+## Testing
 
-Elera Supervisor and its managed MariaDB/Galera process target containerized
-Linux deployment only. Direct execution on Windows is not supported, including
-running the Supervisor or MariaDB/Galera natively from PowerShell, CMD, or a
-Windows service. On Windows, run the complete stack inside a Linux container
-runtime such as Docker Desktop/WSL2; the container must provide the Linux
-filesystem, process, networking, and Galera environment required by the image.
+Run npm test for repository validation.
 
-```bash
-npm ci
-npm test
-npm run lint
-npm run check
-npm run contracts
-npm run audit
-npm run pack
-```
+## Troubleshooting
 
-The production image uses this repository as its Docker build context:
-
-```bash
-docker build -f Dockerfile -t eliware/elera-server:local .
-```
-
-The Docker Compose lab, backup images, HAProxy configuration, E2E scenarios,
-and lab launcher are maintained separately in `../elera-lab`. The supervisor
-image build and publishing workflow remain in this repository.
-
-The local `.env` is ignored and should be created from `.env.example`. The
-supervisor HTTP API listens on `8080`; MariaDB listens on `3306`. Elera is
-enabled by the explicit initialization workflow; an uninitialized data directory
-starts in pending-init mode and does not bootstrap automatically.
-
-This `0.1.6` release is a development and Docker-lab baseline. Production
-deployment still requires the Kubernetes manifests, NetworkPolicies, secret
-delivery, and operational acceptance checks described in the feature
-checklist.
-
-## Documentation
-
-- [API checklist](docs/api.md)
-- [API contracts](docs/api-contracts.md)
-- [Feature checklist](docs/feature-checklist.md)
+Read [troubleshooting](docs/troubleshooting.md) when a command fails.
 
 ## Security
 
-Do not commit `.env`, root tokens, database passwords, or generated runtime
-state. Control API operations use `ROOT_TOKEN` during the current lab phase.
-The container runs as the image's non-root `mysql` user. Its image-owned
-runtime directories are prepared during the build; Kubernetes supplies group
-ownership for the persistent data volume with `fsGroup`. Kubernetes deployments
-must provide writable `/run/elera` runtime storage separately from any
-read-only `/etc/elera` ConfigMap mount.
+Keep tokens, passwords, keys, and runtime data out of Git.
 
-See [the runtime contract](docs/runtime-contract.md) and the versioned release-evidence documents in `docs/`.
-for the startup safety rules, filesystem requirements, and release-evidence
-status.
+## Configuration
 
-## Operations boundary
+Read [configuration and usage](docs/usage.md) before you set runtime values.
 
-The supervisor owns MariaDB/Galera lifecycle, cluster recovery authority,
-health/readiness, routing assignments, telemetry collection, metadata
-administration, and the authenticated control API. Applications connect
-through `@eliware/elera-client`; the CLI owns operator workflows and SQL
-passthrough. Kubernetes manifests, secrets delivery, rollout, backup artifact
-storage, and restore execution are maintained by the companion lab/GitOps
-repositories.
+## Operations
 
-Normal startup never initializes or repairs a data directory. Initialization,
-bootstrap, and recovery are authenticated control-plane operations. On
-shutdown, the supervisor drains routing, quiesces SQL, stops MariaDB with a
-bounded timeout, and then closes its listeners. See
-[`docs/runtime-contract.md`](docs/runtime-contract.md) for filesystem, ports,
-probe, secret, recovery, and shutdown requirements.
+Use the repository docs for supported operations.
+
+## Support
+
+For help, questions, or to chat with the author and community, visit:
+
+[![Discord](https://eliware.org/logos/discord_96.png)](https://discord.gg/M6aTR9eTwN)[![eliware.org](https://eliware.org/logos/eliware_96.png)](https://discord.gg/M6aTR9eTwN)
+
+**[eliware.org on Discord](https://discord.gg/M6aTR9eTwN)**
+
+## Links
+
+- [Home Page](https://eliware.org)
+- [GitHub Org](https://github.com/eliware)
+- [GitHub Repo](https://github.com/eliware/elera-server)
+- [Bug Reports](https://github.com/eliware/elera-server/issues)
+- [Discord](https://discord.gg/M6aTR9eTwN)
+
+## License
+
+[MIT © Eliware](LICENSE)

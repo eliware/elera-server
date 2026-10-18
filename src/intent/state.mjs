@@ -48,8 +48,7 @@ export function createIntentState({ stateDir }) {
   const verify = async (intent) => {
     const rendered = renderIntent(intent);
     const active = await readActive();
-    if (!active)
-      return { ok: false, desiredHash: rendered.hash, activeHash: null };
+    if (!active) return { ok: false, desiredHash: rendered.hash, activeHash: null };
     const activeHash = renderIntent(active).hash;
     return {
       ok: activeHash === rendered.hash,

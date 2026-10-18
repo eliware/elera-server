@@ -1,4 +1,4 @@
-# Supervisor alignment drifts
+# Supervisor match drifts
 
 Checklist against `elera-lab/core_flow.md`, `docs/supervisor_plan.md`, and the
 applicable repository conventions. This is an audit record, not an assertion
@@ -8,105 +8,105 @@ that the implementation is complete.
 
 - [x] Local drain/lifecycle policy ownership and root-socket administration boundary are established.
 - [x] The client dependency is intentionally development-only.
-- [x] Recovery authority, lifecycle validation, and final supervisor gates are verified locally; runtime lab validation remains separate.
+- [x] Recovery authority, lifecycle validation, and final supervisor gates are verified locally. Runtime lab validation remains separate.
 - [x] Source-to-test audit found no non-barrel implementation module without a
-  focused test; six missing direct paths are documented intentional
-  barrels/entrypoints/orchestrators.
+      focused test. Six missing direct paths are documented intentional
+      barrels/entrypoints/orchestrators.
 - [x] Focused cold-recovery, observation, durable-store, and lifecycle tests
-  pass with 100×4 coverage.
+      pass with 100×4 coverage.
 - [x] The previously reported recovery/data-directory coverage gaps are
-  covered by focused tests.
+      covered by focused tests.
 - [x] Added focused edge-case coverage for candidate selection, recovery
-  parsing, state files, and data-directory safety; targeted recovery tests
-  now exercise the previously reported branches.
+      parsing, state files, and data-directory safety. Targeted recovery tests
+      examine the previously reported branches.
 
 ## Actionable drifts
 
 - [x] Local `file:../elera-lib` linking is intentional development state and
-  remains until the published package is selected for release/deployment.
+      remains until the published package is selected for release/deployment.
 - [ ] Reconcile `docs/api-contracts.md` with the final no-legacy policy. Its
-  compatibility/versioning section must describe only intentional protocol
-  versioning, not support for obsolete formats or fallback behavior.
+      compatibility/versioning section must describe only intentional protocol
+      versioning, not support for obsolete formats or fallback behavior.
 - [x] Removed the ambient `ELERA_CLUSTER_BOOTSTRAP` argument fallback. Bootstrap
-  authority now comes from the explicit startup/recovery decision passed through
-  the coordinator; the environment variable remains only for the internal
-  pending-initialization handoff.
-- [x] Completed the thin composition-root refactor; `src/main.mjs` is now the
-  dependency-wiring entrypoint. The README documents the supervisor/application/CLI/GitOps operations boundary.
+      authority comes from the explicit startup/recovery decision passed through
+      the coordinator. The environment variable remains only for the internal
+      pending-initialization handoff.
+- [x] Completed the narrow composition-root refactor. `src/main.mjs` serves as the
+      dependency-wiring entrypoint. The README documents the supervisor/application/CLI/GitOps operations boundary.
 - [x] Runtime SQL client composition is published into shared state before
-  readiness and control routes execute; invalid health query results fail
-  closed, and initialization does not report success when metadata migration
-  fails.
+      readiness and control routes execute. Invalid health query results fail
+      closed, and initialization does not report success when metadata migration
+      fails.
 - [x] App-admin provisioning uses the canonical database, identity, and token
-  endpoints with application-scoped authorization; unauthorized applications
-  remain fail-closed.
-- [x] Fresh startup preserves `SUPERVISOR_INTENT_JSON` while injecting runtime
-  identity, so declared multi-member intent reaches the explicit bootstrap
-  state machine instead of silently falling back to a single-member default.
-- [x] Root-only node data reset is guarded by exact identity/path binding,
-  dry-run and confirmation requirements, readiness/quorum checks, recovery
-  disposition, donor validation for resync, audit, and idempotency.
-- [x] Pending/recovery startup exposes the same root-only reset endpoint while
-  SQL is unavailable, with explicit offline resync and donor requirements.
+      endpoints with application-scoped authorization. Not approved applications
+      remain fail-closed.
+- [x] New startup preserves `SUPERVISOR_INTENT_JSON` while injecting runtime
+      identity, so declared multi-member intent reaches the explicit bootstrap
+      state machine rather than silently falling previous to a single-member default.
+- [x] Root-only node data restore is guarded by exact identity/path binding,
+      dry-run and confirmation requirements, readiness/quorum checks, recovery
+      disposition, donor validation for resync, audit, and idempotency.
+- [x] Pending/recovery startup exposes the same root-only restore endpoint while
+      SQL is unavailable, with explicit offline resync and donor requirements.
 - [x] Executing single-member resync restarts without bootstrap and verifies
-  Synced/Primary readiness before reinclusion.
+      Synced/Primary readiness before reinclusion.
 - [ ] Verify every recovery observation is authenticated, epoch-bound,
-  evidence-digested, quorum-authorized, and rejected when stale or changed.
+      evidence-digested, quorum-authorized, and rejected when stale or changed.
 - [ ] Verify winner-only bootstrap, join-only followers, Primary verification,
-  and clean-restart rejoin behavior with implementation-level tests.
-- [ ] Verify shutdown ordering, operation rejection, drain events, MariaDB
-  SIGTERM handling, timeout force-kill, and listener closure end to end.
+      and clean-restart rejoin behavior with implementation-level tests.
+- [ ] Verify shutdown ordering, operation refusal, drain events, MariaDB
+      SIGTERM handling, timeout force-kill, and listener closure end to end.
 - [ ] Verify the one-second health/assignment cycle and ten-second telemetry
-  aggregation use cached state and never query SQL from probe handlers.
+      aggregation use cached state and do not query SQL from check handlers.
 - [x] Added focused coverage for the supervisor drain-timeout policy uncovered
-  by the current suite.
+      by the current suite.
 - [x] Reconciled the supervisor’s bundle and event validation with the shared
-  `elera-lib` contracts, including credential-free `routing.topology` events.
+      `elera-lib` contracts, with credential-free `routing.topology` events.
 - [x] Regenerated the source-to-test inventory and proved every non-barrel
-  module has a matching focused test; cross-cutting tests remain integration
-  only.
+      module has a matching focused test. Cross-cutting tests remain integration
+      only.
 - [x] Current supervisor `npm test` passes with 100×4 coverage and zero lint
-  warnings; the broader source/test inventory remains under review.
+      warnings. The broader source/test inventory remains under inspect.
 - [x] Full supervisor suite re-run passes with 100×4 coverage and zero lint
-  warnings.
-- [x] Candidate selection now fails closed when multiple nodes have the same
-  highest recovered sequence number; hostname ordering is never used as
-  recovery authority.
-- [x] Recovery authorization now requires distinct, identified quorum-member
-  acknowledgements; numeric counts and duplicate acknowledgements are rejected.
-- [x] Authenticated peer evidence is now checked against the expected node
-  identity before it enters recovery planning or epoch creation.
-- [x] An already-active Primary peer now produces a join-ready startup decision,
-  so a cleanly restarted member starts MariaDB without bootstrap authority.
+      warnings.
+- [x] Candidate selection fails closed when multiple nodes have the same
+      highest recovered sequence number. Hostname ordering is not used as
+      recovery authority.
+- [x] Recovery authorization requires distinct, identified quorum-member
+      acknowledgements. Numeric counts and duplicate acknowledgements are rejected.
+- [x] Authenticated peer data is checked against the expected node
+      identity before it enters recovery planning or epoch creation.
+- [x] An already-active Primary peer produces a join-ready startup decision,
+      so a member that starts after a clean shutdown does not use bootstrap authority.
 - [x] Join verification requires the expected cluster identity, `Primary` view,
-  `Synced` local state, readiness, and expected membership size.
+      `Synced` local state, readiness, and expected membership number.
 - [~] Local lab runtime check: initialized three-node runs have completed
-  health/readiness, restart, rejoin, and cluster-recovery scenarios, but the
-  full recovery and backup workflow still has live failures. SST/IST and
+  health/readiness, start again, rejoin, and cluster-recovery scenarios, but the
+  full recovery and backup workflow remains has live failures. SST/IST and
   post-recovery metadata consistency remain incompletely proven.
 - [~] Quorum rejects stale observations, conflicting cluster identities, and
   conflicting Primary views, and the coordinator refuses assignment changes
-  without quorum. Authenticated epoch-bound evidence, winner-only runtime
+  without quorum. Authenticated epoch-bound data, winner-only runtime
   bootstrap, and cold-recovery/lab validation remain open.
 - [x] Ran the full local supervisor gates: tests, lint, typecheck, contracts,
-  audit, syntax, and package dry-run. CI verification on Ubuntu and Windows
-  remains a CI responsibility.
-- [ ] Refresh release evidence and runtime/API/recovery documentation so old
-  candidate limitations are clearly historical rather than current claims.
+      audit, syntax, and package dry-run. CI verification on Ubuntu and Windows
+      remains a CI responsibility.
+- [ ] Refresh release data and runtime/API/recovery documentation so previous
+      candidate limitations are clearly historical rather than current claims.
 
 ## Verified or intentional boundaries
 
 - [x] The supervisor configuration uses its local drain/lifecycle policy
-  implementation; client-side drain behavior remains owned by the client.
+      implementation. Client-side drain behavior remains owned by the client.
 
 - [x] Supervisor owns Galera state, quorum, recovery authority, routing
-  assignments, metadata administration, and the local root-socket SQL path.
-- [x] `elera-client` remains a development/integration dependency only; the
-  supervisor does not use it for administrative SQL.
+      assignments, metadata administration, and the local root-socket SQL path.
+- [x] `elera-client` remains a development/integration dependency only. The
+      supervisor does not use it for administrative SQL.
 - [x] Application-facing provisioning and SQL pool behavior remain outside
-  supervisor, in CLI and client respectively.
+      supervisor, in CLI and client in order.
 - [x] Authenticated routing bundle retrieval derives application, database, and
-  identity from the runtime token context; cross-application mismatches fail
-  closed.
+      identity from the runtime token context. Cross-application mismatches fail
+      closed.
 - [x] Core Flow remains generic and does not expose supervisor recovery
-  internals.
+      internals.

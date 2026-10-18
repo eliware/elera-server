@@ -2,14 +2,14 @@
 
 ## Purpose
 
-The supervisor turns MariaDB/Galera into a managed service for Kubernetes and
+The supervisor turns MariaDB/Galera into a managed process for Kubernetes and
 local development. It owns cluster authority, lifecycle, routing decisions,
 metadata administration, and the local MariaDB process. Applications use the
-separate `@eliware/elera-client` package; they do not use supervisor internals.
+separate `@eliware/elera-client` package. They do not use supervisor internals.
 
 This document contains supervisor implementation details intentionally omitted
-from `elera-lab/core_flow.md`. Core Flow defines service behavior and
-operator/application workflows; this plan defines how this supervisor realizes
+from `elera-lab/core_flow.md`. Core Flow defines process behavior and
+operator/application workflows. This plan defines how this supervisor realizes
 those behaviors.
 
 ## Target architecture
@@ -50,7 +50,7 @@ Supervisor process
 - MariaDB owns SQL execution.
 - Supervisor owns authority, lifecycle, cluster state, and routing decisions.
 - `elera-lib` owns only shared contracts and pure helpers consumed by multiple
-  repositories; supervisor-specific lifecycle and recovery logic stays local.
+  repositories. Supervisor-specific lifecycle and recovery logic stays local.
 - `elera-client` owns application SQL pools and client-side failover.
 - CLI owns administrative workflows and SQL command passthrough.
 - Persisted intent owns startup-critical configuration.
@@ -66,31 +66,30 @@ observing → candidate-selected → quorum-authorized → bootstrapping
           → primary-verified → join-enabled → complete
 ```
 
-Conflicting or incomplete evidence transitions to `blocked`; it must never
+Conflicting or incomplete data transitions to `blocked`. It must not
 trigger an automatic bootstrap fallback.
 
 Each supervisor publishes authenticated observations containing:
 
-- node identity;
-- cluster identity;
-- local Galera state;
-- sequence number;
-- `safe-to-bootstrap` state;
-- recovered sequence number;
-- data-directory evidence;
+- node identity.
+- cluster identity.
+- local Galera state.
+- sequence number.
+- `safe-to-bootstrap` state.
+- recovered sequence number.
+- data-directory status.
 - observation epoch and timestamp.
 
 Quorum must agree on the exact recovery epoch, winner, cluster identity, and
-evidence digest before bootstrap. Only the elected winner starts MariaDB with
+data digest before bootstrap. Only the elected winner starts MariaDB with
 bootstrap arguments. Other nodes remain stopped or join-only until the winner
 proves `Primary` and expected membership.
 
-Clean restart and cold recovery are distinct paths. A cleanly stopped member
-rejoins normally without entering bootstrap selection.
+A cleanly stopped member starts again without bootstrap selection.
+Cold recovery uses a separate path.
 
 Startup must refuse missing or invalid data, conflicting cluster identity,
-ambiguous sequence numbers, changed evidence after authorization, insufficient
-quorum, and failed Primary formation.
+ambiguous sequence numbers, changed data after authorization, not sufficient quorum, and failed Primary formation.
 
 ## State separation
 
@@ -98,26 +97,26 @@ Keep three classes of state separate:
 
 1. Persisted intent: cluster membership, MariaDB settings, and startup-critical
    configuration.
-2. Durable recovery state: recovery decisions, epochs, evidence digests, leases,
+2. Durable recovery state: recovery decisions, epochs, data digests, leases,
    and audit records.
 3. Ephemeral runtime state: health, routing, telemetry, and current lifecycle.
 
 ## Routing and telemetry
 
 All supervisor SQL administration uses the local root socket. The supervisor
-does not use `elera-client` for administration; that package may remain a
+does not use `elera-client` for administration. That package may remain a
 development/integration dependency for consumer-style tests only.
 
-A single routing-assignment service should consume validated observations and
-metadata, then emit versioned bundles and explicit events:
+A single routing-assignment process must consume validated observations and
+metadata, then send versioned bundles and explicit events:
 
-- `routing.update`;
-- `routing.drain`;
-- `routing.recovery`;
+- `routing.update`.
+- `routing.drain`.
+- `routing.recovery`.
 - `routing.shutdown`.
 
-The health and assignment cycle runs approximately once per second. Telemetry
-aggregation runs approximately once per ten seconds. Routing state and
+The health and assignment cycle runs approximately once for each second. Telemetry
+aggregation runs approximately once for each ten seconds. Routing state and
 telemetry must not require SQL queries from health probes.
 
 ## Lifecycle ordering
@@ -134,44 +133,44 @@ reject new control work
 → close HTTP/WebSocket listeners
 ```
 
-`/healthz` remains available during drain and is independent of SQL. `/readyz`
+`/healthz` remains available during drain and is separate of SQL. `/readyz`
 reports non-ready while draining, recovering, or lacking the required Galera
 state.
 
 ## Implementation plan
 
-Status: `[x]` complete, `[~]` partial/in progress, `[ ]` not complete.
+Status: `[x]` complete, `[~]` incomplete/in progress, `[ ]` not complete.
 
-1. [ ] Split `src/main.mjs` into a thin composition root and focused startup,
-   runtime, and shutdown coordinators.
+1. [ ] Split `src/main.mjs` into a narrow composition root and focused startup,
+       runtime, and shutdown coordinators.
 2. [~] Formalize the cold-recovery state machine and make its coordinator the sole
    bootstrap authority.
 3. [ ] Separate persisted intent, durable recovery/audit state, and ephemeral
-   runtime state.
-4. [~] Validate and authenticate peer observations, including sequence and data
-   directory evidence. Authenticated peer responses are now bound to the
-   expected node identity; full evidence authentication remains open.
+       runtime state.
+4. [~] Validate and authenticate peer observations, with sequence and data
+   directory data. Authenticated peer responses are at this time bound to the
+   expected node identity. Full data authentication remains open.
 5. [~] Require quorum agreement on recovery epoch, winner, cluster identity, and
-   evidence digest. Identified distinct quorum acknowledgements are enforced;
-   authenticated epoch/evidence agreement remains open.
+   data digest. Identified distinct quorum acknowledgements are enforced.
+   authenticated epoch/data agreement remains open.
 6. [~] Enforce winner-only bootstrap, join-only followers, and Primary/membership
-   verification before completion. Startup arguments and join verification enforce
-   the code-level boundary; real SST/IST and runtime completion remain open.
-7. [~] Preserve ordinary clean restart as a normal rejoin path. The startup
-   decision now marks an existing Primary as join-ready; live rejoin validation
-   remains open. The local lab is currently fresh and uninitialized, so SST/IST
+   verification before end. Startup arguments and join verification enforce
+   the code-level boundary. Real SST/IST and runtime end remain open.
+7. [~] Preserve a cleanly stopped member as a rejoin path. The startup
+   decision marks an existing Primary as join-ready. Live rejoin validation
+   remains open. The local lab is currently new and uninitialized, so SST/IST
    validation cannot run until the explicit initialization workflow is executed.
-8. [ ] Centralize routing assignment and versioned bundle/event publication.
+8. [ ] Use one module for routing assignment and versioned bundle/event publication.
 9. [ ] Keep the one-second routing cycle separate from ten-second telemetry
-   aggregation.
-10. [ ] Make shutdown rejection, event publication, SQL quiescing, MariaDB signal
-    handling, timeout, and listener closure deterministic.
+       aggregation.
+10. [ ] Make shutdown refusal, event publication, SQL quiescing, MariaDB signal
+        handling, timeout, and listener closure deterministic.
 11. [x] Keep supervisor administration on the local root socket and preserve the
-    client dependency boundary.
+        client dependency boundary.
 12. [ ] Distinguish operational safety fallbacks from prohibited legacy
-    compatibility behavior.
+        compatibility behavior.
 13. [x] Align every non-barrel implementation module with a focused test, while
-    retaining deliberate composition and cross-cutting exceptions.
+        retaining deliberate composition and cross-cutting exceptions.
 14. [~] Update runtime, API, recovery, and release documentation to match the
     authority model.
 15. [ ] Record intentional exceptions in `known_drifts.md`.
@@ -180,9 +179,9 @@ Status: `[x]` complete, `[~]` partial/in progress, `[ ]` not complete.
 
 Before committing the plan implementation:
 
-- run the complete supervisor suite and verify 100×4 coverage;
-- run lint, typecheck, contract validation, audit, and package checks;
-- verify CI on Ubuntu and Windows;
-- test clean restart, cold recovery, quorum loss, conflicting evidence,
-  winner/joiner failure, SST/IST, drain, shutdown, and rejoin behavior;
-- review the final source-to-test inventory and dependency boundaries.
+- run the complete supervisor suite and verify 100×4 coverage.
+- run lint, typecheck, contract validation, audit, and package checks.
+- verify CI on Ubuntu and Windows.
+- test clean start again, cold recovery, quorum loss, conflicting data,
+  winner/joiner failure, SST/IST, drain, shutdown, and rejoin behavior.
+- inspect the final source-to-test inventory and dependency boundaries.

@@ -1,5 +1,9 @@
 import { expect, test } from "@jest/globals";
-import { initializationSql, sqlIdentifier, sqlLiteral } from "../../../src/lifecycle/pending-init/sql.mjs";
+import {
+  initializationSql,
+  sqlIdentifier,
+  sqlLiteral,
+} from "../../../src/lifecycle/pending-init/sql.mjs";
 
 test("SQL literals and identifiers escape credentials without exposing shell arguments", () => {
   expect(sqlLiteral("a'b\\c")).toBe("'a''b\\\\c'");

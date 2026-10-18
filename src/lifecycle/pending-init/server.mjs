@@ -5,10 +5,10 @@ import { createPendingInitAuthenticator } from "./authentication.mjs";
 import { handlePendingRecoveryRoute } from "./recovery-routes.mjs";
 import { handlePendingInitHealthRoute } from "./health-routes.mjs";
 import { handlePendingInitEvidenceRoute } from "./evidence-route.mjs";
-import { handlePendingInitResetRoute } from "./pending-init-reset-route.mjs";
-import { createPendingInitializationRoute } from "./pending-init-initialize-route.mjs";
-import { handlePendingInitAuthRoute } from "./pending-init-auth-route.mjs";
-import { handlePendingInitFallbackRoute } from "./pending-init-fallback-route.mjs";
+import { handlePendingInitResetRoute } from "./pending/init/reset-route.mjs";
+import { createPendingInitializationRoute } from "./pending/init/initialize-route.mjs";
+import { handlePendingInitAuthRoute } from "./pending/init/auth-route.mjs";
+import { handlePendingInitFallbackRoute } from "./pending/init/fallback-route.mjs";
 
 export function createPendingInitServer({
   environment = process.env,
@@ -22,7 +22,7 @@ export function createPendingInitServer({
   nodeDataReset,
   coldEvidence,
   recoveryRequired = false,
-  recoveryReason = "recovery evidence is unavailable",
+  recoveryReason = "recovery data is unavailable",
   recoveryProtocol,
 } = {}) {
   if (!identity?.name)
@@ -33,7 +33,7 @@ export function createPendingInitServer({
     const localMembers = intent.cluster.members.filter((member) => member.name === identity.name);
     if (localMembers.length !== 1)
       throw new Error(
-        `runtime hostname ${identity.name} must match exactly one configured cluster member; configured members: ${intent.cluster.members.map((member) => member.name).join(", ")}`,
+        `runtime hostname ${identity.name} must match exactly one configured cluster member. Configured members: ${intent.cluster.members.map((member) => member.name).join(", ")}`,
       );
     return localMembers[0].name === intent.cluster.members[0].name ? "bootstrap" : "join-pending";
   };

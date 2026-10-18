@@ -11,7 +11,7 @@ test("serves health and readiness responses", () => {
   const readiness = response();
   expect(handlePendingInitHealthRoute({ url: "/readyz" }, readiness)).toBe(true);
   expect(readiness.writeHead).toHaveBeenCalledWith(503, { "content-type": "text/plain" });
-  expect(readiness.end).toHaveBeenCalledWith("not ready\n");
+  expect(readiness.end).toHaveBeenCalledWith("not available\n");
 });
 
 test("leaves other paths for the server", () => {

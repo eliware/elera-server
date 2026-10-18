@@ -1,2 +1,14 @@
-export const json = (response, status, body) => response.writeHead(status, { 'content-type': 'application/json' }).end(`${JSON.stringify(body)}\n`);
-export async function readBody(request) { let text = ''; for await (const chunk of request) text += chunk; if (!text) return {}; try { return JSON.parse(text); } catch { throw Object.assign(new Error('request body must be valid JSON'), { statusCode: 400 }); } }
+export const json = (response, status, body) =>
+  response
+    .writeHead(status, { "content-type": "application/json" })
+    .end(`${JSON.stringify(body)}\n`);
+export async function readBody(request) {
+  let text = "";
+  for await (const chunk of request) text += chunk;
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw Object.assign(new Error("request body must be valid JSON"), { statusCode: 400 });
+  }
+}

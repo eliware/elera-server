@@ -22,9 +22,7 @@ export async function handleInitializationRoute({
     return true;
   }
   if (method === "POST" && path === "/api/v1/initialization/verify") {
-    const [rows] = await db.query(
-      "SELECT User, Host FROM mysql.user ORDER BY User, Host",
-    );
+    const [rows] = await db.query("SELECT User, Host FROM mysql.user ORDER BY User, Host");
     response.json(200, { ok: true, verified: true, accounts: rows });
     return true;
   }
@@ -47,9 +45,12 @@ export async function handleInitializationRoute({
         statusCode: 409,
       });
     const database = "elera_meta";
-    const data = typeof metadata?.initialize === "function"
-      ? await metadata.initialize(environment)
-      : (await db.query("CREATE DATABASE IF NOT EXISTS `elera_meta`"), await db.query("FLUSH PRIVILEGES"), { database });
+    const data =
+      typeof metadata?.initialize === "function"
+        ? await metadata.initialize(environment)
+        : (await db.query("CREATE DATABASE IF NOT EXISTS `elera_meta`"),
+          await db.query("FLUSH PRIVILEGES"),
+          { database });
     response.json(200, {
       ok: true,
       operation: "initialization.apply",

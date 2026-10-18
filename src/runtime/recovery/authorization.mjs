@@ -1,0 +1,98 @@
+import { mariaDbArguments } from "../../config.mjs";
+import { startupArguments } from "../../cluster/cold-bootstrap/startup/arguments.mjs";
+import { access } from "node:fs/promises";
+import { promoteSafeToBootstrap } from "../../cluster/cold-bootstrap/promote-state.mjs";
+import { acquireRecoveryLeases } from "./leases.mjs";
+
+export async function authorizeSupervisorRecovery({
+  decision,
+  members,
+  config,
+  intentState,
+  recoveryProtocol,
+  recoveryState,
+  recoveryAudit,
+  log,
+  environment = process.env,
+  fetchImpl = fetch,
+  argumentsFor = mariaDbArguments,
+  applyArguments = startupArguments,
+  pathExists = access,
+  promote = promoteSafeToBootstrap,
+} = {}) {
+  if (
+    !decision ||
+    !Array.isArray(members) ||
+    members.length === 0 ||
+    !config?.dataDir ||
+    !intentState?.paths?.renderedPath ||
+    typeof fetchImpl !== "function" ||
+    typeof recoveryProtocol?.authorize !== "function" ||
+    typeof recoveryProtocol?.beginBootstrap !== "function"
+  )
+    throw new TypeError("recovery authorization dependencies are required");
+  if (!(decision.localWinner === true && decision.mode === "bootstrap"))
+    return { decision, args: undefined };
+  if (!decision.winner || !members.some((node) => node.local && node.name === decision.winner))
+    return {
+      decision: {
+        ...decision,
+        mode: "blocked",
+        reason: "recovery winner is not the validated local member",
+      },
+      args: undefined,
+    };
+  const claims = await acquireRecoveryLeases({
+    decision,
+    members,
+    config,
+    environment,
+    fetchImpl,
+    recoveryAudit,
+  });
+  if (claims.filter(Boolean).length < Math.floor(members.length / 2) + 1) {
+    const blocked = {
+      ...decision,
+      mode: "blocked",
+      reason: "recovery lease quorum was not acquired",
+    };
+    recoveryState.set("blocked-ambiguous", { reason: blocked.reason, epoch: blocked.epoch });
+    log.warn("Cold recovery bootstrap refused without lease quorum", { epoch: blocked.epoch });
+    return { decision: blocked, args: undefined };
+  }
+  const acknowledgements = members.filter((_, index) => claims[index]).map((node) => node.name);
+  try {
+    await recoveryProtocol.authorize({ epoch: decision.epoch, acknowledgements });
+    await recoveryProtocol.beginBootstrap({ epoch: decision.epoch, winner: decision.winner });
+  } catch (error) {
+    const blocked = {
+      ...decision,
+      mode: "blocked",
+      reason: error.message,
+      code: error.code ?? "RECOVERY_AUTHORIZATION_FAILED",
+    };
+    recoveryState.set("blocked-ambiguous", { reason: blocked.reason, epoch: blocked.epoch });
+    recoveryAudit.failure?.({ reason: blocked.reason, epoch: blocked.epoch });
+    log.error?.("Cold recovery authorization failed", { error, epoch: decision.epoch });
+    return { decision: blocked, args: undefined };
+  }
+  recoveryState.set("recovery-authorized", { reason: decision.reason, epoch: decision.epoch });
+  recoveryAudit.authorization({ winner: decision.winner, epoch: decision.epoch });
+  recoveryAudit.bootstrapStart({ winner: decision.winner, epoch: decision.epoch });
+  const statePath = `${config.dataDir}/grastate.dat`;
+  try {
+    await pathExists(statePath);
+    await promote(statePath);
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+  const args = applyArguments(
+    argumentsFor({
+      ...config,
+      intentConfigPath: intentState.paths.renderedPath,
+      environment: { ...config.environment, ELERA_CLUSTER_BOOTSTRAP: "true" },
+    }),
+    decision,
+  );
+  return { decision, args };
+}

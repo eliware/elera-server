@@ -42,8 +42,6 @@ test("rejects invalid names, ciphertext, missing artifacts, and dependencies", a
     query: async (sql) => (sql.startsWith("SELECT") ? [[]] : [[]]),
   });
   await expect(store.put(" ", {})).rejects.toThrow("name");
-  await expect(store.put("x", { ciphertext: "plain" })).rejects.toThrow(
-    "age ciphertext",
-  );
+  await expect(store.put("x", { ciphertext: "plain" })).rejects.toThrow("age ciphertext");
   await expect(store.get("x")).rejects.toThrow("not found");
 });

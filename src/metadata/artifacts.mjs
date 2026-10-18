@@ -4,8 +4,7 @@ import { literal } from "../accounts/sql.mjs";
 const checksum = (value) => createHash("sha256").update(value).digest("hex");
 
 export function createArtifactStore({ query }) {
-  if (typeof query !== "function")
-    throw new TypeError("query function is required");
+  if (typeof query !== "function") throw new TypeError("query function is required");
   return {
     async list() {
       const [rows] = await query(
@@ -23,16 +22,9 @@ export function createArtifactStore({ query }) {
         });
       return rows[0];
     },
-    async put(
-      name,
-      { ciphertext, kind = "opaque", keyVersion = "default" } = {},
-    ) {
-      if (!String(name).trim())
-        throw new TypeError("artifact name is required");
-      if (
-        typeof ciphertext !== "string" ||
-        !ciphertext.startsWith("age-encryption.org/")
-      )
+    async put(name, { ciphertext, kind = "opaque", keyVersion = "default" } = {}) {
+      if (!String(name).trim()) throw new TypeError("artifact name is required");
+      if (typeof ciphertext !== "string" || !ciphertext.startsWith("age-encryption.org/"))
         throw new TypeError("artifact must contain age ciphertext");
       const digest = checksum(ciphertext);
       await query(
@@ -49,9 +41,7 @@ export function createArtifactStore({ query }) {
       };
     },
     async remove(name) {
-      await query(
-        `DELETE FROM elera_meta.artifacts WHERE name=${literal(name)}`,
-      );
+      await query(`DELETE FROM elera_meta.artifacts WHERE name=${literal(name)}`);
       return { name, removed: true };
     },
   };

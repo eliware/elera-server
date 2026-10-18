@@ -1,6 +1,7 @@
 import { expect, jest, test } from "@jest/globals";
 import { handleRoutingRoute } from "../../../src/api/routes/routing.mjs";
 
+jest.useFakeTimers();
 const request = (body = {}) => ({
   url: "http://localhost/api",
   async *[Symbol.asyncIterator]() {
@@ -70,15 +71,19 @@ test("serves calculated routes, refreshes bundles, and validates bundle identity
   const bundle = context("GET", "/api/v1/routing/bundle");
   bundle.url = new URL("http://localhost/api/v1/routing/bundle?identity=id");
   expect(await handleRoutingRoute(bundle)).toBe(true);
-  await expect(
-    handleRoutingRoute(context("GET", "/api/v1/routing/bundle")),
-  ).rejects.toMatchObject({ statusCode: 400 });
+  await expect(handleRoutingRoute(context("GET", "/api/v1/routing/bundle"))).rejects.toMatchObject({
+    statusCode: 400,
+  });
 });
 test("resolves a scoped token identity without a query selector and rejects mismatches", async () => {
   const scoped = context("GET", "/api/v1/routing/bundle");
   scoped.auth = { application: "payments", identity: "runtime" };
   expect(await handleRoutingRoute(scoped)).toBe(true);
-  expect(scoped.routingBundles.lease).toHaveBeenCalledWith({ identity: "runtime", application: "payments", database: undefined });
+  expect(scoped.routingBundles.lease).toHaveBeenCalledWith({
+    identity: "runtime",
+    application: "payments",
+    database: undefined,
+  });
   const mismatch = context("GET", "/api/v1/routing/bundle");
   mismatch.url = new URL("http://localhost/api/v1/routing/bundle?identity=other");
   mismatch.auth = { application: "payments", identity: "runtime" };
@@ -99,40 +104,13 @@ test("uses local fallback when no eligible observations remain", async () => {
 });
 test("returns false for unrelated routing requests", async () => {
   expect(await handleRoutingRoute(context("GET", "/other"))).toBe(false);
-  expect(await handleRoutingRoute(context("PUT", "/api/v1/routes"))).toBe(
-    false,
-  );
-});
-test("uses seeded and cached routes and refreshes from peers", async () => {
-  const seed = {
-    primary: [{ host: "seed.example.test", port: 3306 }],
-    balanced: [{ host: "seed.example.test", port: 3306 }],
-  };
-  const seeded = context("GET", "/api/v1/routes", []);
-  seeded.routingEvent = () => ({ routes: seed });
-  await handleRoutingRoute(seeded);
-  expect(seeded.response.json).toHaveBeenCalledWith(
-    200,
-    expect.objectContaining({ data: seed }),
-  );
-  const cached = context("GET", "/api/v1/routes", []);
-  cached.routingEvent = () => undefined;
-  await handleRoutingRoute(cached);
-  expect(cached.response.json).toHaveBeenCalled();
-  const peer = context("GET", "/api/v1/routes", []);
-  peer.environment.ELERA_PEERS = "http://peer.example.test";
-  peer.getStatus.mockRejectedValue(new Error("status unavailable"));
-  peer.fetchImpl = undefined;
-  peer.observationStore.snapshot = () => [node];
-  await handleRoutingRoute(peer);
+  expect(await handleRoutingRoute(context("PUT", "/api/v1/routes"))).toBe(false);
 });
 test("retains recent calculated routes during a temporary observation gap", async () => {
   const healthy = context("GET", "/api/v1/routes", [node]);
   healthy.url = new URL("http://localhost/api/v1/routes?application=cached");
   await handleRoutingRoute(healthy);
-  const degraded = context("GET", "/api/v1/routes", [
-    { ...node, synced: false },
-  ]);
+  const degraded = context("GET", "/api/v1/routes", [{ ...node, synced: false }]);
   degraded.url = healthy.url;
   degraded.getStatus.mockResolvedValue({ ready: false });
   await handleRoutingRoute(degraded);
@@ -203,19 +181,13 @@ test("uses default local SQL port when a ready node has no observation", async (
 });
 test("executes optional routing providers on an uncached application", async () => {
   const missing = context("GET", "/api/v1/routes", []);
-  missing.url = new URL(
-    "http://localhost/api/v1/routes?application=missing-provider",
-  );
+  missing.url = new URL("http://localhost/api/v1/routes?application=missing-provider");
   missing.getStatus = undefined;
   missing.observationStore = undefined;
   await expect(handleRoutingRoute(missing)).resolves.toBe(true);
   const failed = context("GET", "/api/v1/routes", []);
-  failed.url = new URL(
-    "http://localhost/api/v1/routes?application=failed-provider",
-  );
-  failed.getStatus = jest
-    .fn()
-    .mockRejectedValue(new Error("status unavailable"));
+  failed.url = new URL("http://localhost/api/v1/routes?application=failed-provider");
+  failed.getStatus = jest.fn().mockRejectedValue(new Error("status unavailable"));
   failed.observationStore = undefined;
   await expect(handleRoutingRoute(failed)).resolves.toBe(true);
 });

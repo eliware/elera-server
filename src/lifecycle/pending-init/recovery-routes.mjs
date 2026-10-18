@@ -1,8 +1,8 @@
 import { json } from "./responses.mjs";
-import { handlePendingRecoveryStatusRoute } from "./pending-recovery-status-routes.mjs";
-import { handlePendingRecoveryPlanRoute } from "./pending-recovery-plan-routes.mjs";
-import { handlePendingRecoveryAuthorizationRoute } from "./pending-recovery-authorization-routes.mjs";
-import { handlePendingRecoveryJoinRoute } from "./pending-recovery-join-route.mjs";
+import { handlePendingRecoveryStatusRoute } from "./pending/recovery/status-routes.mjs";
+import { handlePendingRecoveryPlanRoute } from "./pending/recovery/plan-routes.mjs";
+import { handlePendingRecoveryAuthorizationRoute } from "./pending/recovery/authorization-routes.mjs";
+import { handlePendingRecoveryJoinRoute } from "./pending/recovery/join-route.mjs";
 
 const recoveryPath = (path) => path.startsWith("/api/v1/cluster/cold-recovery/");
 

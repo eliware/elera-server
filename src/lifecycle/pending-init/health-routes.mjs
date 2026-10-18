@@ -4,7 +4,7 @@ export function handlePendingInitHealthRoute(request, response) {
     return true;
   }
   if (request.url === "/readyz") {
-    response.writeHead(503, { "content-type": "text/plain" }).end("not ready\n");
+    response.writeHead(503, { "content-type": "text/plain" }).end("not available\n");
     return true;
   }
   return false;

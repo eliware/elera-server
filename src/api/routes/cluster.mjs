@@ -1,9 +1,9 @@
-import { handleColdBootstrapEvidence } from "./cold-bootstrap-evidence.mjs";
-import { handleColdBootstrapLocal } from "./cold-bootstrap-local.mjs";
-import { handleClusterStatusRoute } from "./cluster-status-routes.mjs";
-import { handleClusterBootstrapRoute } from "./cluster-bootstrap-routes.mjs";
-import { handleClusterColdBootstrapRoute } from "./cluster-cold-bootstrap-routes.mjs";
-import { handleClusterLifecycleRoute } from "./cluster-lifecycle-routes.mjs";
+import { handleColdBootstrapEvidence } from "./cold/bootstrap/evidence.mjs";
+import { handleColdBootstrapLocal } from "./cold/bootstrap/local.mjs";
+import { handleClusterStatusRoute } from "./cluster/status-routes.mjs";
+import { handleClusterBootstrapRoute } from "./cluster/bootstrap-routes.mjs";
+import { handleClusterColdBootstrapRoute } from "./cluster/cold-bootstrap-routes.mjs";
+import { handleClusterLifecycleRoute } from "./cluster/lifecycle-routes.mjs";
 
 export async function handleClusterRoute({
   method,

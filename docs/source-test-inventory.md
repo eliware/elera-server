@@ -2,7 +2,7 @@
 
 Reviewed on 2026-08-30 from the current working tree. Total: **142** `src/**/*.mjs` files.
 
-Classification: barrels and entrypoints/orchestrators are excluded from focused implementation coverage; every other module is an implementation module requiring a mirrored focused test under `tests/`. The two CLI wrapper modules are executable entrypoints, not reusable implementation modules.
+Type: barrels and entrypoints/orchestrators are excluded from focused implementation coverage. Every other module is an implementation module requiring a mirrored focused test under `tests/`. The two CLI wrapper modules are executable entrypoints, not shared implementation modules.
 
 ## Barrels (2)
 
@@ -166,4 +166,4 @@ Classification: barrels and entrypoints/orchestrators are excluded from focused 
 - No non-barrel implementation module was missing from the focused-test path
   audit.
 - Cross-cutting, contract, integration, barrel, and entrypoint tests supplement but do not replace focused implementation tests.
-- Re-run this inventory whenever source modules are added, removed, or reclassified.
+- Re-run this inventory when source modules are added, removed, or reclassified.
