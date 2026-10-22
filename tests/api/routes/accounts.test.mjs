@@ -1,4 +1,4 @@
-import { expect, test } from "@jest/globals";
+import { expect, jest, test } from "@jest/globals";
 import { handleAccountRoute } from "../../../src/api/routes/accounts.mjs";
 
 const response = () => ({
@@ -31,6 +31,7 @@ test("account route handles listing, export, import and unknown paths", async ()
       request: request(),
       response: list,
       db,
+      auth: { root: true },
     }),
   ).toBe(true);
   const exported = response();
@@ -41,6 +42,7 @@ test("account route handles listing, export, import and unknown paths", async ()
       request: request(),
       response: exported,
       db,
+      auth: { root: true },
     }),
   ).toBe(true);
   const imported = response();
@@ -51,6 +53,7 @@ test("account route handles listing, export, import and unknown paths", async ()
       request: request({ confirm: true, accounts: [{ user: "app", grants: [] }] }),
       response: imported,
       db,
+      auth: { root: true },
     }),
   ).toBe(true);
   expect(
@@ -60,6 +63,7 @@ test("account route handles listing, export, import and unknown paths", async ()
       request: request(),
       response: response(),
       db,
+      auth: { root: true },
     }),
   ).toBe(false);
 });
@@ -72,6 +76,7 @@ test("delegates managed account provision, revoke, and verification outcomes", a
     request: request(body),
     response: response(),
     db,
+    auth: { root: true },
   });
   await expect(
     handleAccountRoute(context("/api/v1/accounts/provision", { user: "app", database: "db" })),
@@ -93,6 +98,7 @@ test("returns unavailable when account verification finds no grants", async () =
       request: request({ user: "missing" }),
       response: out,
       db,
+      auth: { root: true },
     }),
   ).resolves.toBe(true);
   expect(out.status).toBe(503);
@@ -107,7 +113,41 @@ test("returns healthy when account verification finds grants", async () => {
       request: request({ user: "app" }),
       response: out,
       db: { query: async () => [[{ grant: "GRANT USAGE" }], []] },
+      auth: { root: true },
     }),
   ).resolves.toBe(true);
   expect(out.status).toBe(200);
+});
+
+test("rejects account access without an account scope", async () => {
+  const query = jest.fn();
+  for (const [method, path, body] of [
+    ["GET", "/api/v1/accounts"],
+    ["POST", "/api/v1/accounts/export"],
+    ["POST", "/api/v1/accounts/import", { confirm: true }],
+    ["POST", "/api/v1/accounts/provision", {}],
+    ["POST", "/api/v1/accounts/revoke", {}],
+    ["POST", "/api/v1/accounts/verify", {}],
+  ]) {
+    await expect(
+      handleAccountRoute({
+        method,
+        path,
+        request: request(body),
+        response: response(),
+        db: { query },
+        auth: { scopes: [] },
+      }),
+    ).resolves.toBe(false);
+  }
+  await expect(
+    handleAccountRoute({
+      method: "GET",
+      path: "/api/v1/accounts",
+      request: request(),
+      response: response(),
+      db: { query },
+    }),
+  ).resolves.toBe(false);
+  expect(query).not.toHaveBeenCalled();
 });

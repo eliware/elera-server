@@ -23,6 +23,7 @@ test("uses the shared JSON response writer when no response helper is provided",
       request: request(),
       response: target,
       db: { query: async () => [[]] },
+      auth: { root: true },
     }),
   ).resolves.toBe(true);
   expect(target.writeHead).toHaveBeenCalledWith(200, expect.any(Object));
@@ -37,6 +38,7 @@ test("uses a response helper and defaults null account collections", async () =>
       request: request(),
       response: target,
       db: { query: async () => [[]] },
+      auth: { root: true },
     }),
   ).resolves.toBe(true);
   await expect(
@@ -46,6 +48,7 @@ test("uses a response helper and defaults null account collections", async () =>
       request: request({ confirm: true, accounts: [{ user: "app", host: null, grants: null }] }),
       response: target,
       db: { query: async () => [[]] },
+      auth: { root: true },
     }),
   ).resolves.toBe(true);
   await expect(
@@ -55,6 +58,7 @@ test("uses a response helper and defaults null account collections", async () =>
       request: request({ confirm: true, accounts: null }),
       response: target,
       db: { query: async () => [[]] },
+      auth: { root: true },
     }),
   ).resolves.toBe(true);
 });

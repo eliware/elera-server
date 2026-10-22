@@ -1,4 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
+import { recoveryLeaseClaims } from "../../../../test-fixtures/recovery-lease-claims.mjs";
 import { createCandidateRecoveryPlan } from "../../../../src/cluster/cold-bootstrap/protocol/candidate-plan.mjs";
 
 jest.useFakeTimers();
@@ -144,7 +145,10 @@ test("blocks when the candidate cannot be revalidated before bootstrap", async (
     store,
   });
   const plan = await protocol.plan();
-  await protocol.authorize({ epoch: plan.epoch, acknowledgements: ["a.example.test"] });
+  await protocol.authorize({
+    epoch: plan.epoch,
+    leaseClaims: recoveryLeaseClaims(plan.epoch, "a.example.test", ["a.example.test"]),
+  });
   unavailable = true;
   await expect(
     protocol.beginBootstrap({ epoch: plan.epoch, winner: "a.example.test" }),

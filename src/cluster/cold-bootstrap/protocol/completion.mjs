@@ -32,8 +32,8 @@ export async function completeRecoveryEpoch(
     membership,
     completedAt: now().toISOString(),
   });
-  setCurrent(current);
   await persist(current, existing.epoch);
+  setCurrent(current);
   await publishEvent({
     type: "recovery.bootstrap-complete",
     epoch: current.epoch,

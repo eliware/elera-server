@@ -10,6 +10,7 @@ const context = (method, path, metadata, body = {}) => {
     method,
     path,
     metadata,
+    auth: { root: true },
     request,
     response: { json: (status, value) => Object.assign(out, { status, body: value }) },
     out,
@@ -42,8 +43,32 @@ test("returns unavailable verification and ignores unrelated routes", async () =
 });
 test("rejects unconfirmed initialization", async () => {
   await expect(
-    handleMetadataRoute(
-      context("POST", "/api/v1/metadata/initialize", { initialize: async () => ({}) }),
-    ),
+    handleMetadataRoute({
+      ...context("POST", "/api/v1/metadata/initialize", { initialize: async () => ({}) }),
+      auth: { root: true },
+    }),
   ).rejects.toThrow("confirm");
+});
+
+test("requires root for initialization and a read scope for status", async () => {
+  const metadata = { status: async () => ({}), initialize: async () => ({}) };
+  await expect(
+    handleMetadataRoute({
+      ...context("POST", "/api/v1/metadata/initialize", metadata, { confirm: true }),
+      auth: { scopes: ["metadata:write"] },
+    }),
+  ).resolves.toBe(false);
+  await expect(
+    handleMetadataRoute({
+      ...context("GET", "/api/v1/metadata/status", metadata),
+      auth: { scopes: [] },
+    }),
+  ).resolves.toBe(false);
+  await expect(
+    handleMetadataRoute({
+      ...context("POST", "/api/v1/metadata/verify", metadata),
+      auth: { scopes: [] },
+    }),
+  ).resolves.toBe(false);
+  await expect(handleMetadataRoute({})).resolves.toBe(false);
 });

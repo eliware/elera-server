@@ -31,6 +31,17 @@ export async function handlePendingRecoveryAuthorizationRoute({
     : path.endsWith("/bootstrap")
       ? "beginBootstrap"
       : "complete";
+  if (body.confirm !== true) {
+    json(response, 409, { ok: false, error: "recovery action requires confirm: true" });
+    return true;
+  }
+  if (operation === "authorize") {
+    json(response, 403, {
+      ok: false,
+      error: "recovery authorization requires the local lease coordinator",
+    });
+    return true;
+  }
   if (typeof protocol[operation] !== "function") {
     json(response, 503, {
       ok: false,

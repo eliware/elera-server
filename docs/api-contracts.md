@@ -47,6 +47,10 @@ application and identity (and so its database and credential) without
 an identity query parameter. A root token may select an identity explicitly.
 an identity selector that conflicts with a scoped token is rejected.
 
+Routing resync requires `routing:read`. A scoped token can resync only its bound application.
+Credential refresh requires `credential:refresh` and honors the token's identity and application.
+Credential bundle reads require `credential:issue` or `credential:refresh`.
+
 During graceful shutdown, the supervisor publishes a drain event and stops new SQL work.
 It lets active queries and transactions complete, then closes the pools and MariaDB.
 `elera-lib` stops selecting the draining node and chooses an ordered alternative.
@@ -128,6 +132,10 @@ backup:read backup:create backup:restore
 `primary` and `balanced` are routing policies, not permissions. Both may
 accept writes in a Elera cluster.
 
+Account reads and exports require `account:read`. Account imports and provisioning require
+`account:provision`. Revocation requires `account:revoke`. Metadata initialization requires the
+root token. Metadata status and verification require `metadata:read` or the root token.
+
 ## Response envelope
 
 Correct response:
@@ -188,6 +196,8 @@ Idempotency-Key: <stable caller-generated key>
 
 Dangerous operations require `confirm: true`. Idempotent operations return the
 existing result when the same idempotency key is replayed.
+The local recovery coordinator accepts authenticated peer lease claims. HTTP callers cannot create
+recovery authorization by submitting member names.
 
 ## Connection bundle
 

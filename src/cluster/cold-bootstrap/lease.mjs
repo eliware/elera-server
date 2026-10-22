@@ -1,4 +1,4 @@
-import { mkdir, open, readFile } from "node:fs/promises";
+import { mkdir, open, readFile, unlink } from "node:fs/promises";
 import { dirname } from "node:path";
 
 const isFqdn = (value) =>
@@ -8,7 +8,13 @@ const isFqdn = (value) =>
 
 export function createRecoveryLease(
   path,
-  { openFile = open, staleAfterMs = 120000, now = () => Date.now() } = {},
+  {
+    openFile = open,
+    readLease = readFile,
+    removeLease = unlink,
+    staleAfterMs = 120000,
+    now = () => Date.now(),
+  } = {},
 ) {
   if (!path) throw new TypeError("recovery lease path is required");
   return {
@@ -25,18 +31,47 @@ export function createRecoveryLease(
       } catch (error) {
         if (error.code !== "EEXIST") throw error;
         try {
-          const current = JSON.parse(await readFile(path, "utf8"));
+          const current = JSON.parse(await readLease(path, "utf8"));
           if (current.epoch === epoch && current.winner === winner)
             return { granted: true, epoch, winner, existing: true };
           const stale =
             staleAfterMs >= 0 &&
             Number.isFinite(Date.parse(current.claimedAt)) &&
             now() - Date.parse(current.claimedAt) > staleAfterMs;
-          if (stale)
-            return { granted: false, reason: "stale recovery lease requires operator cleanup" };
+          if (stale) {
+            const cleanup = await acquireCleanupLock();
+            if (!cleanup)
+              return { granted: false, reason: "stale recovery lease cleanup is in progress" };
+            try {
+              const latest = JSON.parse(await readLease(path, "utf8"));
+              const latestStale =
+                Number.isFinite(Date.parse(latest.claimedAt)) &&
+                now() - Date.parse(latest.claimedAt) > staleAfterMs;
+              if (
+                latest.epoch !== current.epoch ||
+                latest.winner !== current.winner ||
+                !latestStale
+              )
+                return { granted: false, reason: "recovery lease changed during cleanup" };
+              await removeLease(path);
+              return await this.claim({ epoch, winner });
+            } finally {
+              await cleanup.close().catch(() => {});
+              await removeLease(`${path}.cleanup-lock`).catch(() => {});
+            }
+          }
         } catch {}
         return { granted: false, reason: "recovery lease is held by different epoch" };
       }
     },
   };
+
+  async function acquireCleanupLock() {
+    try {
+      return await openFile(`${path}.cleanup-lock`, "wx");
+    } catch (error) {
+      if (error.code === "EEXIST") return undefined;
+      throw error;
+    }
+  }
 }

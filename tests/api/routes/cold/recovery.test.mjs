@@ -96,13 +96,12 @@ test("covers every authenticated recovery operation and protocol absence", async
     beginBootstrap: jest.fn(async () => ({})),
     complete: jest.fn(async () => ({})),
   };
-  const auth = { root: true };
+  const auth = { root: true, identity: "peer.example.test" };
   for (const [method, path] of [
     ["GET", "/api/v1/cluster/cold-recovery/evidence"],
     ["GET", "/api/v1/cluster/cold-recovery/status"],
     ["POST", "/api/v1/cluster/cold-recovery/plan"],
     ["POST", "/api/v1/cluster/cold-recovery/retry"],
-    ["POST", "/api/v1/cluster/cold-recovery/authorize"],
     ["POST", "/api/v1/cluster/cold-recovery/bootstrap"],
     ["POST", "/api/v1/cluster/cold-recovery/complete"],
   ])
@@ -110,12 +109,24 @@ test("covers every authenticated recovery operation and protocol absence", async
       handleColdRecoveryRoute({
         method,
         path,
-        request: request({ epoch: "e" }),
+        request: request({ epoch: "e", confirm: true }),
         response: response(),
         protocol,
         auth,
+        internal: path.endsWith("/authorize"),
       }),
     ).resolves.toBe(true);
+  await expect(
+    handleColdRecoveryRoute({
+      method: "POST",
+      path: "/api/v1/cluster/cold-recovery/authorize",
+      request: request({ epoch: "e", confirm: true }),
+      response: response(),
+      protocol,
+      auth,
+      internal: true,
+    }),
+  ).rejects.toMatchObject({ statusCode: 403 });
   const unavailable = response();
   await expect(
     handleColdRecoveryRoute({

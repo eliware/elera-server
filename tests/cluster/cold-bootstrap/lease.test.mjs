@@ -67,7 +67,7 @@ test("propagates unexpected lease storage failures", async () => {
   });
 });
 
-test("fails closed for an expired competing lease", async () => {
+test("replaces an expired competing lease after exclusive cleanup locking", async () => {
   const directory = await mkdtemp(join(tmpdir(), "elera-lease-"));
   const path = join(directory, "lease.json");
   await writeFile(
@@ -76,8 +76,85 @@ test("fails closed for an expired competing lease", async () => {
   );
   const lease = createRecoveryLease(path, { staleAfterMs: 100, now: () => 1000 });
   await expect(lease.claim({ epoch: "new", winner: "new.example.test" })).resolves.toMatchObject({
-    granted: false,
-    reason: "stale recovery lease requires operator cleanup",
+    granted: true,
+    epoch: "new",
   });
   await rm(directory, { recursive: true, force: true });
+});
+
+test("denies stale cleanup while another process owns the cleanup lock", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "elera-lease-"));
+  const path = join(directory, "lease.json");
+  await writeFile(
+    path,
+    JSON.stringify({ epoch: "old", winner: "old", claimedAt: new Date(0).toISOString() }),
+  );
+  await writeFile(`${path}.cleanup-lock`, "busy");
+  const lease = createRecoveryLease(path, { staleAfterMs: 100, now: () => 1000 });
+  await expect(lease.claim({ epoch: "new", winner: "new.example.test" })).resolves.toMatchObject({
+    granted: false,
+    reason: "stale recovery lease cleanup is in progress",
+  });
+  await rm(directory, { recursive: true, force: true });
+});
+
+test("keeps a changed lease and tolerates cleanup failures", async () => {
+  let reads = 0;
+  const handle = {
+    writeFile: async () => {},
+    close: async () => {
+      throw new Error("closed");
+    },
+  };
+  const lease = createRecoveryLease("lease.json", {
+    openFile: async () => {
+      if (reads === 0) throw Object.assign(new Error("exists"), { code: "EEXIST" });
+      return handle;
+    },
+    readLease: async () => {
+      reads += 1;
+      return JSON.stringify(
+        reads === 1
+          ? { epoch: "old", winner: "old", claimedAt: new Date(0).toISOString() }
+          : {
+              epoch: "newer",
+              winner: "newer.example.test",
+              claimedAt: new Date(1000).toISOString(),
+            },
+      );
+    },
+    removeLease: async () => {
+      throw new Error("removed");
+    },
+    staleAfterMs: 100,
+    now: () => 1000,
+  });
+  await expect(lease.claim({ epoch: "new", winner: "new.example.test" })).resolves.toMatchObject({
+    granted: false,
+    reason: "recovery lease changed during cleanup",
+  });
+});
+
+test("denies cleanup when the exclusive lock cannot be created", async () => {
+  let opens = 0;
+  const lease = createRecoveryLease("lease.json", {
+    openFile: async () => {
+      opens += 1;
+      const error = new Error("failure");
+      error.code = opens === 1 ? "EEXIST" : "EIO";
+      throw error;
+    },
+    readLease: async () =>
+      JSON.stringify({
+        epoch: "old",
+        winner: "old",
+        claimedAt: new Date(0).toISOString(),
+      }),
+    staleAfterMs: 100,
+    now: () => 1000,
+  });
+  await expect(lease.claim({ epoch: "new", winner: "new.example.test" })).resolves.toMatchObject({
+    granted: false,
+    reason: "recovery lease is held by different epoch",
+  });
 });

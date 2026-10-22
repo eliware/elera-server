@@ -24,6 +24,7 @@ const context = (method, path, observations = [node], body = {}) => {
   return {
     method,
     path,
+    auth: { root: true },
     url: new URL(`http://localhost${path}`),
     identity: { name: "n.example.test" },
     request: request(body),
@@ -77,7 +78,11 @@ test("serves calculated routes, refreshes bundles, and validates bundle identity
 });
 test("resolves a scoped token identity without a query selector and rejects mismatches", async () => {
   const scoped = context("GET", "/api/v1/routing/bundle");
-  scoped.auth = { application: "payments", identity: "runtime" };
+  scoped.auth = {
+    application: "payments",
+    identity: "runtime",
+    scopes: ["credential:issue"],
+  };
   expect(await handleRoutingRoute(scoped)).toBe(true);
   expect(scoped.routingBundles.lease).toHaveBeenCalledWith({
     identity: "runtime",
@@ -86,8 +91,47 @@ test("resolves a scoped token identity without a query selector and rejects mism
   });
   const mismatch = context("GET", "/api/v1/routing/bundle");
   mismatch.url = new URL("http://localhost/api/v1/routing/bundle?identity=other");
-  mismatch.auth = { application: "payments", identity: "runtime" };
+  mismatch.auth = {
+    application: "payments",
+    identity: "runtime",
+    scopes: ["credential:issue"],
+  };
   await expect(handleRoutingRoute(mismatch)).rejects.toMatchObject({ statusCode: 403 });
+});
+
+test("requires credential scope and enforces refresh resource bindings", async () => {
+  const denied = context("POST", "/api/v1/routes/refresh", [], { identity: "runtime" });
+  denied.auth = { scopes: [] };
+  await expect(handleRoutingRoute(denied)).resolves.toBe(false);
+  const mismatch = context("POST", "/api/v1/routes/refresh", [], {
+    identity: "other",
+    application: "other-app",
+  });
+  mismatch.auth = {
+    identity: "runtime",
+    application: "payments",
+    scopes: ["credential:refresh"],
+  };
+  await expect(handleRoutingRoute(mismatch)).rejects.toMatchObject({ statusCode: 403 });
+  const unbound = context("POST", "/api/v1/routes/refresh", [], { identity: "runtime" });
+  unbound.auth = { scopes: ["credential:refresh"] };
+  await expect(handleRoutingRoute(unbound)).rejects.toMatchObject({ statusCode: 403 });
+  const scoped = context("POST", "/api/v1/routes/refresh");
+  scoped.auth = {
+    identity: "runtime",
+    application: "payments",
+    database: "payments",
+    scopes: ["credential:refresh"],
+  };
+  await expect(handleRoutingRoute(scoped)).resolves.toBe(true);
+  expect(scoped.routingBundles.lease).toHaveBeenCalledWith({
+    identity: "runtime",
+    application: "payments",
+    database: "payments",
+  });
+  const deniedBundle = context("GET", "/api/v1/routing/bundle");
+  deniedBundle.auth = { scopes: [] };
+  await expect(handleRoutingRoute(deniedBundle)).resolves.toBe(false);
 });
 test("uses local fallback when no eligible observations remain", async () => {
   const c = context("GET", "/api/v1/routes", [{ ...node, synced: false }]);

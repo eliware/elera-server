@@ -85,3 +85,33 @@ test("leaves unrelated requests for the dispatcher", async () => {
     handleClusterStatusRoute({ method: "POST", path: "/api/v1/cluster/status" }),
   ).resolves.toBe(false);
 });
+
+test.each(["-1", "1.5", "NaN"])("rejects invalid readiness timeout %s", async (timeoutMs) => {
+  await expect(
+    handleClusterStatusRoute({
+      method: "GET",
+      path: "/api/v1/cluster/wait-ready",
+      url: new URL(`http://node/api/v1/cluster/wait-ready?timeoutMs=${timeoutMs}`),
+      response: response(),
+      getStatus: async () => ({ ready: true }),
+      enabled: true,
+    }),
+  ).rejects.toMatchObject({ statusCode: 400 });
+});
+
+test("polls until a valid timeout expires", async () => {
+  jest.useFakeTimers();
+  const target = response();
+  const pending = handleClusterStatusRoute({
+    method: "GET",
+    path: "/api/v1/cluster/wait-ready",
+    url: new URL("http://node/api/v1/cluster/wait-ready?timeoutMs=5"),
+    response: target,
+    getStatus: async () => ({ ready: false }),
+    enabled: true,
+  });
+  await jest.advanceTimersByTimeAsync(5);
+  await expect(pending).resolves.toBe(true);
+  expect(target.json).toHaveBeenCalledWith(408, expect.objectContaining({ status: "timeout" }));
+  jest.useRealTimers();
+});

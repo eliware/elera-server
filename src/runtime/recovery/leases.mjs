@@ -27,12 +27,22 @@ export async function acquireRecoveryLeases({
         );
         const granted = response.ok && (await response.json()).data?.granted === true;
         recoveryAudit.lease({ node: node.name, granted, epoch: decision.epoch });
-        return granted;
+        return leaseClaim(node.name, decision, granted);
       } catch {
         recoveryAudit.lease({ node: node.name, granted: false, epoch: decision.epoch });
-        return false;
+        return leaseClaim(node.name, decision, false);
       }
     }),
   );
   return claims;
+}
+
+function leaseClaim(member, decision, granted) {
+  return {
+    member,
+    epoch: decision.epoch,
+    winner: decision.winner,
+    granted,
+    authenticated: true,
+  };
 }

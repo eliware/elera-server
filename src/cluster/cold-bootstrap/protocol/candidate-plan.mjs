@@ -36,8 +36,8 @@ export async function createCandidateRecoveryPlan({
     divergent: decision.divergent,
     histories: decision.histories,
   };
-  setCurrent(current);
   await persist(current);
+  setCurrent(current);
   await publishEvent({
     type: "recovery.candidate-selected",
     epoch: epoch.epoch,

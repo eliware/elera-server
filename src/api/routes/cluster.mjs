@@ -20,6 +20,7 @@ export async function handleClusterRoute({
   coldEvidence,
   coldBootstrapLocal,
   internal = false,
+  auth,
 }) {
   const config = getConfig?.() ?? {};
   const enabled = config.elera ?? config.clusterSize > 1;
@@ -38,7 +39,7 @@ export async function handleClusterRoute({
     return true;
   const shared = { method, path, response, getStatus, enabled };
   if (await handleClusterStatusRoute({ ...shared, url })) return true;
-  const operations = { ...shared, request, nodeId: identity.name };
+  const operations = { ...shared, request, nodeId: identity.name, auth };
   if (await handleClusterBootstrapRoute({ ...operations, bootstrap })) return true;
   if (await handleClusterColdBootstrapRoute({ ...shared, request, service: coldBootstrap }))
     return true;

@@ -72,7 +72,7 @@ test("recovery runtime closes its listener after the authorized bootstrap hook c
   await fetch(`http://127.0.0.1:${port}/api/v1/cluster/cold-recovery/bootstrap`, {
     method: "POST",
     headers: { authorization: "Bearer root", "content-type": "application/json" },
-    body: JSON.stringify({ epoch: 4, winner: "elera-0.cluster.local" }),
+    body: JSON.stringify({ epoch: 4, winner: "elera-0.cluster.local", confirm: true }),
   });
   await new Promise((resolve) => setImmediate(resolve));
   expect(onRecoveryBootstrap).toHaveBeenCalled();
@@ -100,7 +100,7 @@ test("recovery runtime keeps the listener for a non-winning bootstrap decision",
   await fetch(`http://127.0.0.1:${port}/api/v1/cluster/cold-recovery/bootstrap`, {
     method: "POST",
     headers: { authorization: "Bearer root", "content-type": "application/json" },
-    body: JSON.stringify({ epoch: 4, winner: "elera-0.cluster.local" }),
+    body: JSON.stringify({ epoch: 4, winner: "elera-0.cluster.local", confirm: true }),
   });
   await new Promise((resolve) => setImmediate(resolve));
   expect(close).not.toHaveBeenCalledWith(runtime.server);
@@ -182,7 +182,7 @@ test("recovery runtime logs bootstrap handoff failures after responding", async 
   const response = await fetch(`http://127.0.0.1:${port}/api/v1/cluster/cold-recovery/bootstrap`, {
     method: "POST",
     headers: { authorization: "Bearer root", "content-type": "application/json" },
-    body: JSON.stringify({ epoch: 4, winner: "elera-0.cluster.local" }),
+    body: JSON.stringify({ epoch: 4, winner: "elera-0.cluster.local", confirm: true }),
   });
   expect(response.status).toBe(202);
   await new Promise((resolve) => setImmediate(resolve));
@@ -211,7 +211,7 @@ test("recovery runtime logs completion handoff failures after responding", async
   const response = await fetch(`http://127.0.0.1:${port}/api/v1/cluster/cold-recovery/complete`, {
     method: "POST",
     headers: { authorization: "Bearer root", "content-type": "application/json" },
-    body: JSON.stringify({ epoch: 4 }),
+    body: JSON.stringify({ epoch: 4, confirm: true }),
   });
   expect(response.status).toBe(202);
   await new Promise((resolve) => setImmediate(resolve));

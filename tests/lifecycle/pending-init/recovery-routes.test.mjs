@@ -67,7 +67,9 @@ test("handles recovery mutations, joins, and authorization failures", async () =
   for (const url of ["/authorize", "/bootstrap", "/complete", "/join"])
     await expect(
       handlePendingRecoveryRoute(
-        options({ request: request("POST", `/api/v1/cluster/cold-recovery${url}`) }),
+        options({
+          request: request("POST", `/api/v1/cluster/cold-recovery${url}`, { confirm: true }),
+        }),
       ),
     ).resolves.toBe(true);
   await expect(

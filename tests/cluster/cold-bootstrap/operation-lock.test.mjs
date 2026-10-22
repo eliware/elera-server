@@ -59,15 +59,15 @@ test("rejects a live lock and removes a stale lock", async () => {
   }
 });
 
-test("removes a stale lock and retries the operation", async () => {
+test("rejects a stale lock until an operator reviews it", async () => {
   const dir = await mkdtemp(join(tmpdir(), "elera-lock-"));
   const path = join(dir, "lock");
   try {
     await writeFile(path, "stale");
     await utimes(path, new Date(0), new Date(0));
-    await expect(
-      createOperationLock({ path, staleAfterMs: 1 }).run(async () => "recovered"),
-    ).resolves.toBe("recovered");
+    await expect(createOperationLock({ path }).run(async () => "recovered")).rejects.toMatchObject({
+      statusCode: 409,
+    });
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -79,26 +79,20 @@ test("propagates non-contention filesystem errors", async () => {
   ).rejects.toThrow();
 });
 
-test("retries when a competing lock disappears during inspection", async () => {
+test("fails closed when a competing lock exists", async () => {
   let opens = 0;
   const openFile = async () => {
     opens += 1;
     if (opens === 1) throw Object.assign(new Error("exists"), { code: "EEXIST" });
     return { writeFile: async () => {}, close: async () => {} };
   };
-  const statFile = async () => {
-    throw Object.assign(new Error("disappeared"), { code: "ENOENT" });
-  };
-  const remove = async () => {};
   await expect(
     createOperationLock({
       path: "lock",
       makeDirectory: async () => {},
       openFile,
-      statFile,
-      remove,
     }).run(async () => "retried"),
-  ).resolves.toBe("retried");
+  ).rejects.toMatchObject({ statusCode: 409 });
 });
 
 test("returns a conflict for a fresh competing lock", async () => {
@@ -110,13 +104,12 @@ test("returns a conflict for a fresh competing lock", async () => {
       path: "lock",
       makeDirectory: async () => {},
       openFile,
-      statFile: async () => ({ mtimeMs: Date.now() }),
       remove: async () => {},
     }).run(async () => "blocked"),
   ).rejects.toMatchObject({ statusCode: 409 });
 });
 
-test("propagates inspection failures other than a disappeared lock", async () => {
+test("does not inspect competing lock metadata", async () => {
   const openFile = async () => {
     throw Object.assign(new Error("exists"), { code: "EEXIST" });
   };
@@ -125,12 +118,9 @@ test("propagates inspection failures other than a disappeared lock", async () =>
       path: "lock",
       makeDirectory: async () => {},
       openFile,
-      statFile: async () => {
-        throw new Error("permission denied");
-      },
       remove: async () => {},
     }).run(async () => "blocked"),
-  ).rejects.toThrow("permission denied");
+  ).rejects.toMatchObject({ statusCode: 409 });
 });
 
 test("tolerates cleanup failures after the operation completes", async () => {

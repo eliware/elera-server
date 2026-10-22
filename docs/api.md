@@ -76,6 +76,9 @@ Observations must expire. A stale observation cannot keep a node eligible.
 - [x] `GET /api/v1/cluster/quorum` — examine the current new observation quorum.
 - [x] `POST /api/v1/cluster/lifecycle/plan` — plan a bootstrap, join, keep, or recovery operation.
 - [x] `POST /api/v1/cluster/lifecycle/apply` — execute an injected lifecycle operation with confirmation.
+- [x] `POST /api/v1/cluster/join` — execute a confirmed join operation.
+- [x] `POST /api/v1/cluster/leave` — execute a confirmed membership change.
+- [x] `POST /api/v1/cluster/recover` — execute a confirmed recovery operation.
 
 ## Elera lifecycle
 
@@ -221,7 +224,7 @@ verification. `elera-cli` continues to stream dumps through native
 - [x] `GET /api/v1/cluster/cold-recovery/status` — inspect the persisted recovery epoch.
 - [x] `POST /api/v1/cluster/cold-recovery/plan` — calculate a deterministic candidate.
 - [x] `POST /api/v1/cluster/cold-recovery/retry` — discard a blocked decision and recollect data.
-- [x] `POST /api/v1/cluster/cold-recovery/authorize` — authorize the exact epoch with quorum.
+- [ ] `POST /api/v1/cluster/cold-recovery/authorize` — reserved for local lease coordination.
 - [x] `POST /api/v1/cluster/cold-recovery/bootstrap` — mark the approved winner as bootstrapping.
 - [x] `POST /api/v1/cluster/cold-recovery/complete` — publish verified bootstrap end.
 - [x] `GET /api/v1/recovery/events` — inspect recent recovery decisions.

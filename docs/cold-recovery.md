@@ -41,7 +41,6 @@ Recovery endpoints:
 - `GET /api/v1/cluster/cold-recovery/status`
 - `POST /api/v1/cluster/cold-recovery/plan`
 - `POST /api/v1/cluster/cold-recovery/retry`
-- `POST /api/v1/cluster/cold-recovery/authorize`
 - `POST /api/v1/cluster/cold-recovery/bootstrap`
 - `POST /api/v1/cluster/cold-recovery/complete`
 
@@ -49,5 +48,8 @@ Write endpoints require the recovery-write scope or authenticated internal
 peer access. Data, decisions, authorizations, bootstrap, join, prevent, and
 refusal outcomes are auditable.
 
-An expired recovery lease remains fenced until an operator inspects and removes
-it. An operator must inspect an expired lease before removing it.
+The local startup coordinator collects authenticated peer lease claims. HTTP
+callers cannot create recovery authorization by submitting member names.
+
+An expired recovery lease is replaced under an exclusive cleanup lock. An
+operator must inspect an expired bootstrap operation lock before removing it.

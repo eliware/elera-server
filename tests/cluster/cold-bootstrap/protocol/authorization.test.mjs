@@ -1,6 +1,7 @@
 import { expect, jest, test } from "@jest/globals";
 import { createRecoveryEpoch } from "../../../../src/cluster/cold-bootstrap/recovery/epoch/create.mjs";
 import { authorizeRecoveryEpoch } from "../../../../src/cluster/cold-bootstrap/protocol/authorization.mjs";
+import { recoveryLeaseClaims } from "../../../../test-fixtures/recovery-lease-claims.mjs";
 
 jest.useFakeTimers();
 const epoch = () =>
@@ -11,11 +12,14 @@ const epoch = () =>
     quorum: ["a.example.test"],
   });
 
-test("authorizes a valid epoch with all required acknowledgements", async () => {
+test("authorizes a valid epoch with authenticated lease claims", async () => {
   const existing = epoch();
   const persist = jest.fn();
   const result = await authorizeRecoveryEpoch(
-    { epoch: existing.epoch, acknowledgements: existing.quorum },
+    {
+      epoch: existing.epoch,
+      leaseClaims: recoveryLeaseClaims(existing.epoch, existing.winner.node, existing.quorum),
+    },
     {
       read: async () => existing,
       persist,
@@ -29,12 +33,12 @@ test("authorizes a valid epoch with all required acknowledgements", async () => 
   expect(persist).toHaveBeenCalledWith(result, existing.epoch);
 });
 
-test("uses default arguments and rejects non-array acknowledgements", async () => {
+test("rejects missing or malformed authenticated lease claims", async () => {
   await expect(authorizeRecoveryEpoch()).rejects.toThrow();
   const existing = epoch();
   await expect(
     authorizeRecoveryEpoch(
-      { epoch: existing.epoch, acknowledgements: "invalid" },
+      { epoch: existing.epoch, leaseClaims: "invalid" },
       {
         read: async () => existing,
         persist: jest.fn(),
@@ -119,7 +123,11 @@ test("publishes lifecycle events for evidence, candidate, authorization, bootstr
   const plan = await eventProtocol.plan();
   await eventProtocol.authorize({
     epoch: plan.epoch,
-    acknowledgements: ["a.example.test", "b.example.test", "c.example.test"],
+    leaseClaims: recoveryLeaseClaims(plan.epoch, "a.example.test", [
+      "a.example.test",
+      "b.example.test",
+      "c.example.test",
+    ]),
   });
   await eventProtocol.beginBootstrap({ epoch: plan.epoch, winner: "a.example.test" });
   ready = true;
@@ -141,19 +149,26 @@ test("publishes lifecycle events for evidence, candidate, authorization, bootstr
 test("requires the exact epoch and quorum before authorization", async () => {
   const { protocol } = makeProtocol();
   const plan = await protocol.plan();
-  await expect(
-    protocol.authorize({ epoch: "stale", acknowledgements: ["a.example.test", "b.example.test"] }),
-  ).rejects.toMatchObject({ statusCode: 409 });
+  await expect(protocol.authorize({ epoch: "stale", leaseClaims: [] })).rejects.toMatchObject({
+    statusCode: 409,
+  });
   await expect(
     protocol.authorize({
       epoch: plan.epoch,
-      acknowledgements: ["a.example.test", "b.example.test"],
+      leaseClaims: recoveryLeaseClaims(plan.epoch, "a.example.test", [
+        "a.example.test",
+        "b.example.test",
+      ]),
     }),
   ).rejects.toThrow("full-cluster");
   await expect(
     protocol.authorize({
       epoch: plan.epoch,
-      acknowledgements: ["a.example.test", "b.example.test", "c.example.test"],
+      leaseClaims: recoveryLeaseClaims(plan.epoch, "a.example.test", [
+        "a.example.test",
+        "b.example.test",
+        "c.example.test",
+      ]),
     }),
   ).resolves.toMatchObject({
     phase: "authorized",
@@ -171,7 +186,11 @@ test("requires the full configured acknowledgements for forced authorization", a
     protocol.authorize({
       epoch: plan.epoch,
       force: true,
-      acknowledgements: ["a.example.test", "b.example.test", "c.example.test"],
+      leaseClaims: recoveryLeaseClaims(plan.epoch, "a.example.test", [
+        "a.example.test",
+        "b.example.test",
+        "c.example.test",
+      ]),
     }),
   ).resolves.toMatchObject({ phase: "authorized", operatorForced: true });
 });
@@ -184,7 +203,10 @@ test("rejects a reduced quorum even for forced authorization", async () => {
       epoch: plan.epoch,
       force: true,
       supervisorQuorum: 2,
-      acknowledgements: ["a.example.test", "b.example.test"],
+      leaseClaims: recoveryLeaseClaims(plan.epoch, "a.example.test", [
+        "a.example.test",
+        "b.example.test",
+      ]),
     }),
   ).rejects.toMatchObject({ statusCode: 400 });
 });
@@ -202,7 +224,11 @@ test("rejects invalid completion and preserves the authorized epoch", async () =
   const plan = await protocol.plan();
   await protocol.authorize({
     epoch: plan.epoch,
-    acknowledgements: ["a.example.test", "b.example.test", "c.example.test"],
+    leaseClaims: recoveryLeaseClaims(plan.epoch, "a.example.test", [
+      "a.example.test",
+      "b.example.test",
+      "c.example.test",
+    ]),
   });
   await expect(
     protocol.complete({
@@ -215,7 +241,7 @@ test("rejects invalid completion and preserves the authorized epoch", async () =
   await expect(
     protocol.beginBootstrap({ epoch: plan.epoch, winner: "wrong" }),
   ).rejects.toMatchObject({ statusCode: 409 });
-  await expect(
-    protocol.authorize({ epoch: "old", acknowledgements: ["a.example.test", "b.example.test"] }),
-  ).rejects.toMatchObject({ statusCode: 409 });
+  await expect(protocol.authorize({ epoch: "old", leaseClaims: [] })).rejects.toMatchObject({
+    statusCode: 409,
+  });
 });

@@ -23,7 +23,7 @@ const response = () => ({
   },
 });
 
-test("runs authorization, bootstrap, and completion operations", async () => {
+test("runs confirmed bootstrap and completion operations", async () => {
   const protocol = Object.fromEntries(
     ["authorize", "beginBootstrap", "complete"].map((name) => [
       name,
@@ -31,14 +31,13 @@ test("runs authorization, bootstrap, and completion operations", async () => {
     ]),
   );
   for (const [path, operation] of [
-    ["authorize", "authorize"],
     ["bootstrap", "bootstrap"],
     ["complete", "complete"],
   ]) {
     const out = response();
     await expect(
       handlePendingRecoveryAuthorizationRoute({
-        request: request(path, { epoch: "epoch" }),
+        request: request(path, { epoch: "epoch", confirm: true }),
         response: out,
         protocol,
         onRecoveryBootstrap: jest.fn(),
@@ -50,6 +49,25 @@ test("runs authorization, bootstrap, and completion operations", async () => {
     expect(out.body).toContain(`cluster.cold-recovery.${operation}`);
     if (out.finish) await out.finish();
   }
+});
+
+test("blocks HTTP recovery authorization outside the local lease coordinator", async () => {
+  const out = response();
+  const authorize = jest.fn();
+  await handlePendingRecoveryAuthorizationRoute({
+    request: request("authorize", { epoch: "epoch", confirm: true }),
+    response: out,
+    protocol: { authorize },
+  });
+  expect(out.status).toBe(403);
+  expect(authorize).not.toHaveBeenCalled();
+  const unconfirmed = response();
+  await handlePendingRecoveryAuthorizationRoute({
+    request: request("bootstrap", { epoch: "epoch" }),
+    response: unconfirmed,
+    protocol: { beginBootstrap: jest.fn() },
+  });
+  expect(unconfirmed.status).toBe(409);
 });
 
 test("handles missing protocol, bad input, missing operations, and operation errors", async () => {
@@ -78,7 +96,7 @@ test("handles missing protocol, bad input, missing operations, and operation err
   expect(malformed.status).toBe(400);
   const missing = response();
   await handlePendingRecoveryAuthorizationRoute({
-    request: request("complete"),
+    request: request("complete", { confirm: true }),
     response: missing,
     protocol: {},
   });
@@ -89,10 +107,10 @@ test("handles missing protocol, bad input, missing operations, and operation err
   ]) {
     const out = response();
     await handlePendingRecoveryAuthorizationRoute({
-      request: request("authorize"),
+      request: request("bootstrap", { confirm: true }),
       response: out,
       protocol: {
-        authorize: async () => {
+        beginBootstrap: async () => {
           throw error;
         },
       },
@@ -114,7 +132,7 @@ test("logs failed bootstrap and completion handoffs", async () => {
     const out = response();
     const log = { error: jest.fn() };
     await handlePendingRecoveryAuthorizationRoute({
-      request: request(path),
+      request: request(path, { confirm: true }),
       response: out,
       protocol: { [path === "bootstrap" ? "beginBootstrap" : "complete"]: async () => ({}) },
       [option]: async () => {
@@ -127,7 +145,7 @@ test("logs failed bootstrap and completion handoffs", async () => {
   }
   const out = response();
   await handlePendingRecoveryAuthorizationRoute({
-    request: request("bootstrap"),
+    request: request("bootstrap", { confirm: true }),
     response: out,
     protocol: { beginBootstrap: async () => ({}) },
     onRecoveryBootstrap: async () => {

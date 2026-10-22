@@ -7,7 +7,7 @@ const request = (body) => ({
 });
 const paths = ["retry", "authorize", "bootstrap", "complete"];
 
-test("authorizes recovery writes and returns each operation result", async () => {
+test("authorizes recovery writes except peer-quorum authorization", async () => {
   const response = { json: jest.fn() };
   const protocol = {
     retry: jest.fn(async () => "r"),
@@ -15,7 +15,7 @@ test("authorizes recovery writes and returns each operation result", async () =>
     beginBootstrap: jest.fn(async (v) => v),
     complete: jest.fn(async (v) => v),
   };
-  for (const name of paths) {
+  for (const name of paths.filter((name) => name !== "authorize")) {
     const path = `/api/v1/cluster/cold-recovery/${name}`;
     expect(
       await handleColdRecoveryWriteRoute({
@@ -23,8 +23,9 @@ test("authorizes recovery writes and returns each operation result", async () =>
         path,
         response,
         protocol,
-        auth: { root: true },
-        request: request({ force: true }),
+        auth: { root: true, identity: "peer.example.test" },
+        internal: true,
+        request: request({ force: true, confirm: true, acknowledgements: ["fake", "names"] }),
       }),
     ).toBe(true);
   }
@@ -56,19 +57,43 @@ test("authorizes recovery writes and returns each operation result", async () =>
     }),
   ).toBe(false);
   expect(protocol.retry).toHaveBeenCalledTimes(1);
-  expect(protocol.authorize).toHaveBeenCalledWith({ force: true });
-  expect(await handleColdRecoveryWriteRoute()).toBe(false);
-});
-
-test("requires root access for forced recovery authorization", async () => {
   await expect(
     handleColdRecoveryWriteRoute({
       method: "POST",
       path: "/api/v1/cluster/cold-recovery/authorize",
-      request: request({ force: true }),
+      response,
+      protocol,
+      auth: { root: true, identity: "peer.example.test" },
+      internal: true,
+      request: request({ confirm: true, force: true }),
+    }),
+  ).rejects.toMatchObject({ statusCode: 403 });
+  expect(protocol.authorize).not.toHaveBeenCalled();
+  expect(await handleColdRecoveryWriteRoute()).toBe(false);
+});
+
+test("requires confirmation for recovery mutations", async () => {
+  await expect(
+    handleColdRecoveryWriteRoute({
+      method: "POST",
+      path: "/api/v1/cluster/cold-recovery/bootstrap",
+      request: request({ epoch: "e" }),
+      response: { json: jest.fn() },
+      protocol: { beginBootstrap: jest.fn() },
+      auth: { scopes: ["recovery:write"] },
+    }),
+  ).rejects.toMatchObject({ statusCode: 409 });
+});
+
+test("does not accept caller-supplied recovery acknowledgements from a root request", async () => {
+  await expect(
+    handleColdRecoveryWriteRoute({
+      method: "POST",
+      path: "/api/v1/cluster/cold-recovery/authorize",
+      request: request({ acknowledgements: ["a", "b", "c"], confirm: true }),
       response: { json: jest.fn() },
       protocol: { authorize: jest.fn() },
-      auth: { scopes: ["recovery:write"] },
+      auth: { root: true },
     }),
   ).rejects.toMatchObject({ statusCode: 403 });
 });

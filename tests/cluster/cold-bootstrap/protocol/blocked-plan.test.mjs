@@ -1,4 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
+import { recoveryLeaseClaims } from "../../../../test-fixtures/recovery-lease-claims.mjs";
 import { saveBlockedRecoveryPlan } from "../../../../src/cluster/cold-bootstrap/protocol/blocked-plan.mjs";
 
 jest.useFakeTimers();
@@ -10,6 +11,7 @@ test("persists and publishes a blocked recovery plan", async () => {
   const result = await saveBlockedRecoveryPlan({
     reason: "peer evidence is missing",
     code: "EVIDENCE_MISSING",
+    failures: [{ code: "PEER_OFFLINE", message: "peer is offline" }],
     now,
     persist,
     publishEvent,
@@ -17,6 +19,7 @@ test("persists and publishes a blocked recovery plan", async () => {
   });
   expect(result).toMatchObject({ eligible: false, mode: "blocked", phase: "blocked" });
   expect(setCurrent).toHaveBeenCalledWith(expect.objectContaining({ phase: "blocked" }));
+  expect(result.errors).toEqual([{ code: "PEER_OFFLINE", message: "peer is offline" }]);
   expect(persist).toHaveBeenCalledWith(expect.objectContaining({ phase: "blocked" }));
   expect(publishEvent).toHaveBeenCalledWith(
     expect.objectContaining({ type: "recovery.refused", code: "EVIDENCE_MISSING" }),
@@ -84,7 +87,10 @@ test("blocks changed evidence after authorization", async () => {
     store,
   });
   const plan = await protocol.plan();
-  await protocol.authorize({ epoch: plan.epoch, acknowledgements: ["a.example.test"] });
+  await protocol.authorize({
+    epoch: plan.epoch,
+    leaseClaims: recoveryLeaseClaims(plan.epoch, "a.example.test", ["a.example.test"]),
+  });
   await expect(
     protocol.beginBootstrap({ epoch: plan.epoch, winner: "a.example.test" }),
   ).rejects.toMatchObject({

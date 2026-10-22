@@ -155,6 +155,11 @@ test("authorizes winner without mutating Galera state", async () => {
   });
   expect(promote).not.toHaveBeenCalled();
   expect(value.recoveryProtocol.authorize).toHaveBeenCalled();
+  expect(value.recoveryProtocol.authorize.mock.calls[0][0].leaseClaims).toEqual([
+    expect.objectContaining({ member: "a", granted: true, authenticated: true }),
+    expect.objectContaining({ member: "b", granted: true, authenticated: true }),
+    expect.objectContaining({ member: "c", granted: true, authenticated: true }),
+  ]);
   expect(value.recoveryState.set).toHaveBeenCalledWith("recovery-authorized", expect.any(Object));
 });
 test("promotes an existing winner state file after recovery authorization", async () => {

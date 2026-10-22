@@ -40,8 +40,11 @@ export async function handleClusterStatusRoute({
     return true;
   }
   if (method !== "GET" || path !== "/api/v1/cluster/wait-ready") return false;
-  const deadline =
-    Date.now() + Math.min(Number(url.searchParams.get("timeoutMs") ?? 60000), 300000);
+  const rawTimeout = url.searchParams.get("timeoutMs");
+  const timeoutMs = rawTimeout === null ? 60000 : Number(rawTimeout);
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 0)
+    throw Object.assign(new Error("timeoutMs must be a non-negative integer"), { statusCode: 400 });
+  const deadline = Date.now() + Math.min(timeoutMs, 300000);
   let data;
   do {
     data = await getStatus().catch(() => ({ ready: false }));
@@ -49,9 +52,8 @@ export async function handleClusterStatusRoute({
       response.json(200, { ok: true, operation: "cluster.wait-ready", status: "ready", data });
       return true;
     }
-    await new Promise((resolve) =>
-      setTimeout(resolve, Math.min(1000, Math.max(1, deadline - Date.now()))),
-    );
+    if (Date.now() < deadline)
+      await new Promise((resolve) => setTimeout(resolve, Math.min(1000, deadline - Date.now())));
   } while (Date.now() < deadline);
   response.json(408, { ok: false, operation: "cluster.wait-ready", status: "timeout", data });
   return true;

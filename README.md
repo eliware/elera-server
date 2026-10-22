@@ -42,6 +42,22 @@ GHCR package settings control image visibility and pull access.
 Read the [documentation index](docs/README.md) and [specification index](specs/README.md).
 Read [release notes](RELEASE_NOTES.md) for released changes.
 
+The API base path is `/api/v1`. Read [API contracts](docs/api-contracts.md) and the [endpoint checklist](docs/api.md).
+Root tokens and scoped bearer tokens control access. Account routes use account scopes, while metadata initialization requires the root token.
+
+Cluster reads use `cluster:read`. Cluster changes use `cluster:operate` and require confirmation when they change state.
+Routing reads use `routing:read`. Credential bundle and refresh routes use `credential:issue` and `credential:refresh`.
+
+Cold recovery uses status, planning, peer leases, epoch approval, bootstrap, and final-status routes.
+API responses exclude private keys and plaintext artifact contents.
+
+Use the documented status and planning routes before an operator starts recovery.
+The local startup coordinator collects authenticated peer lease claims before bootstrap.
+Bootstrap starts only after the recovery protocol approves a winner.
+Record final cluster status after readiness checks pass.
+Use confirmed join, keep, and recovery routes for cluster lifecycle changes.
+Read [cold recovery](docs/cold-recovery.md) for recovery steps and safeguards.
+
 ## Development
 
 Keep code and tests in their assigned folders.

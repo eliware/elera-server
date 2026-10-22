@@ -25,8 +25,8 @@ export async function beginRecoveryBootstrap(
       code: error.code ?? "RECOVERY_EVIDENCE_UNAVAILABLE",
       updatedAt: now().toISOString(),
     };
-    setCurrent(current);
     await persist(current, existing.epoch);
+    setCurrent(current);
     await publishEvent({
       type: "recovery.refused",
       epoch,
@@ -54,8 +54,8 @@ export async function beginRecoveryBootstrap(
       evidence: latest,
       updatedAt: now().toISOString(),
     };
-    setCurrent(current);
     await persist(current, existing.epoch);
+    setCurrent(current);
     await publishEvent({
       type: "recovery.refused",
       epoch,
@@ -67,8 +67,8 @@ export async function beginRecoveryBootstrap(
   const current = transitionRecoveryEpoch(existing, "bootstrapping", {
     bootstrapStartedAt: now().toISOString(),
   });
-  setCurrent(current);
   await persist(current, existing.epoch);
+  setCurrent(current);
   await publishEvent({ type: "recovery.bootstrap-started", epoch: current.epoch, winner });
   return current;
 }

@@ -28,8 +28,8 @@ export async function saveBlockedRecoveryPlan({
       : {}),
     updatedAt: now().toISOString(),
   };
-  setCurrent(current);
   await persist(current);
+  setCurrent(current);
   await publishEvent({
     type: "recovery.refused",
     reason: eventReason,

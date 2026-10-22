@@ -50,7 +50,7 @@ export async function authorizeSupervisorRecovery({
     fetchImpl,
     recoveryAudit,
   });
-  if (claims.filter(Boolean).length < Math.floor(members.length / 2) + 1) {
+  if (claims.filter((claim) => claim.granted).length < Math.floor(members.length / 2) + 1) {
     const blocked = {
       ...decision,
       mode: "blocked",
@@ -60,9 +60,9 @@ export async function authorizeSupervisorRecovery({
     log.warn("Cold recovery bootstrap refused without lease quorum", { epoch: blocked.epoch });
     return { decision: blocked, args: undefined };
   }
-  const acknowledgements = members.filter((_, index) => claims[index]).map((node) => node.name);
+  const leaseClaims = claims.filter((claim) => claim.granted);
   try {
-    await recoveryProtocol.authorize({ epoch: decision.epoch, acknowledgements });
+    await recoveryProtocol.authorize({ epoch: decision.epoch, leaseClaims });
     await recoveryProtocol.beginBootstrap({ epoch: decision.epoch, winner: decision.winner });
   } catch (error) {
     const blocked = {

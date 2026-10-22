@@ -1,5 +1,6 @@
 import { readBody } from "../http.mjs";
 import { handleRoutingInspection } from "./routing/inspection.mjs";
+import { allowed, assertBoundResource, boundResource } from "./routing/authorization.mjs";
 
 export async function handleRoutingRoute({
   method,
@@ -33,7 +34,14 @@ export async function handleRoutingRoute({
       fetchImpl,
     });
   if (path === "/api/v1/routes/refresh" && method === "POST") {
-    const bundle = await routingBundles.lease(await readBody(request));
+    if (!allowed(auth, "credential:refresh")) return false;
+    if (!auth?.root && !auth?.identity)
+      throw Object.assign(new Error("identity-bound credential access is required"), {
+        statusCode: 403,
+      });
+    const body = await readBody(request);
+    assertBoundResource(auth, body);
+    const bundle = await routingBundles.lease({ ...body, ...boundResource(auth) });
     response.json(200, {
       ok: true,
       operation: "routes.refresh",
@@ -42,14 +50,15 @@ export async function handleRoutingRoute({
     return true;
   }
   if (path === "/api/v1/routing/bundle" && method === "GET") {
+    if (!allowed(auth, "credential:issue") && !allowed(auth, "credential:refresh")) return false;
     const requestedIdentity = url.searchParams.get("identity");
-    const requestedNodeIdentity = requestedIdentity ?? auth?.identity;
-    if (!requestedNodeIdentity)
-      throw Object.assign(new Error("identity is required"), { statusCode: 400 });
-    if (requestedIdentity && auth?.identity && requestedIdentity !== auth.identity)
+    if (!auth?.root && requestedIdentity && requestedIdentity !== auth?.identity)
       throw Object.assign(new Error("identity is not approved for this token"), {
         statusCode: 403,
       });
+    const requestedNodeIdentity = requestedIdentity ?? auth?.identity;
+    if (!requestedNodeIdentity)
+      throw Object.assign(new Error("identity is required"), { statusCode: 400 });
     response.json(200, {
       ok: true,
       operation: "routing.bundle",

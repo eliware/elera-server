@@ -40,7 +40,22 @@ test("records granted and denied recovery lease claims", async () => {
       fetchImpl,
       recoveryAudit,
     }),
-  ).resolves.toEqual([true, false]);
+  ).resolves.toEqual([
+    {
+      member: "a.example.test",
+      epoch: decision.epoch,
+      winner: decision.winner,
+      granted: true,
+      authenticated: true,
+    },
+    {
+      member: "b.example.test",
+      epoch: decision.epoch,
+      winner: decision.winner,
+      granted: false,
+      authenticated: true,
+    },
+  ]);
   expect(recoveryAudit.lease).toHaveBeenCalledTimes(2);
 });
 

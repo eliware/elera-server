@@ -93,7 +93,7 @@ test("blocks bootstrap during recovery and serves recovery operations", async ()
       const blocked = await post(base, "/api/v1/cluster/bootstrap");
       expect(blocked.status).toBe(503);
       expect((await blocked.json()).reason).toBe("quorum is unavailable");
-      expect((await post(base, "/api/v1/cluster/cold-recovery/authorize")).status).toBe(202);
+      expect((await post(base, "/api/v1/cluster/cold-recovery/authorize")).status).toBe(403);
       expect((await post(base, "/api/v1/cluster/cold-recovery/bootstrap")).status).toBe(202);
       expect((await post(base, "/api/v1/cluster/cold-recovery/complete")).status).toBe(202);
       const join = await post(base, "/api/v1/cluster/cold-recovery/join", {
@@ -102,7 +102,7 @@ test("blocks bootstrap during recovery and serves recovery operations", async ()
       expect(join.status).toBe(202);
       expect((await requestLocal(`${base}/unknown`)).status).toBe(503);
       await Promise.resolve();
-      expect(recoveryProtocol.authorize).toHaveBeenCalledTimes(1);
+      expect(recoveryProtocol.authorize).not.toHaveBeenCalled();
       expect(recoveryProtocol.beginBootstrap).toHaveBeenCalledTimes(1);
       expect(recoveryProtocol.complete).toHaveBeenCalledTimes(1);
     },

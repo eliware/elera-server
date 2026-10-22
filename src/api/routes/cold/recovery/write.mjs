@@ -22,16 +22,16 @@ export async function handleColdRecoveryWriteRoute({
   const action = actions[path];
   if (!action) return false;
   const body = action[0] === "retry" ? undefined : await readBody(request);
-  if (action[0] === "authorize" && body.force === true && !auth?.root)
-    throw Object.assign(new Error("forced recovery requires root administrator authorization"), {
-      statusCode: 403,
-    });
-  const data =
-    action[0] === "retry"
-      ? await protocol.retry()
-      : await protocol[action[0]](
-          action[0] === "authorize" ? { ...body, force: body.force === true && auth.root } : body,
-        );
+  if (action[0] !== "retry" && body.confirm !== true)
+    throw Object.assign(new Error("recovery mutation requires confirm: true"), { statusCode: 409 });
+  if (action[0] === "authorize")
+    throw Object.assign(
+      new Error("recovery authorization is handled by the local lease coordinator"),
+      {
+        statusCode: 403,
+      },
+    );
+  const data = action[0] === "retry" ? await protocol.retry() : await protocol[action[0]](body);
   response.json(action[1], {
     ok: true,
     operation: `cluster.cold-recovery.${path.split("/").pop()}`,

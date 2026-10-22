@@ -16,6 +16,7 @@ const context = (method, path, body = {}, overrides = {}) => ({
   identity: { name: "node.example.test" },
   getStatus: async () => ({ ready: true }),
   getConfig: () => ({ elera: true, clusterSize: 3 }),
+  auth: { root: true },
   ...overrides,
 });
 
@@ -41,7 +42,12 @@ test("handles cluster status, eligibility, wait-ready, and lifecycle plans", asy
   const lifecycle = { execute: jest.fn(async () => ({ status: "completed" })) };
   await expect(
     handleClusterRoute(
-      context("POST", "/api/v1/cluster/lifecycle/apply", { action: "drain" }, { lifecycle }),
+      context(
+        "POST",
+        "/api/v1/cluster/lifecycle/apply",
+        { action: "drain", confirm: true },
+        { lifecycle },
+      ),
     ),
   ).resolves.toBe(true);
   expect(lifecycle.execute).toHaveBeenCalled();
@@ -75,7 +81,9 @@ test("handles bootstrap confirmation, disabled mode, and unavailable lifecycle",
     ),
   ).rejects.toMatchObject({ statusCode: 409 });
   await expect(
-    handleClusterRoute(context("POST", "/api/v1/cluster/lifecycle/apply", { action: "drain" })),
+    handleClusterRoute(
+      context("POST", "/api/v1/cluster/lifecycle/apply", { action: "drain", confirm: true }),
+    ),
   ).rejects.toMatchObject({ statusCode: 503 });
 });
 test("handles failed readiness polling and non-eligible bootstrap states", async () => {

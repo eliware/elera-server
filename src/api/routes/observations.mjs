@@ -41,13 +41,14 @@ export async function handleObservationRoute({
   }
   if (method === "GET" && path === "/api/v1/cluster/topology") {
     if (!allowed(auth, "cluster:read")) throw forbidden();
+    const snapshot = store.snapshot();
     response.json(200, {
       ok: true,
       operation: "cluster.topology",
       status: "completed",
       data: {
-        observations: store.snapshot(),
-        quorum: evaluateQuorum(store.snapshot(), { expectedSize }),
+        observations: snapshot,
+        quorum: evaluateQuorum(snapshot, { expectedSize }),
       },
     });
     return true;

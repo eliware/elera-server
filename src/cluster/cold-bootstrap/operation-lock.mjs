@@ -1,12 +1,10 @@
-import { mkdir, open, stat, unlink } from "node:fs/promises";
+import { mkdir, open, unlink } from "node:fs/promises";
 import { dirname } from "node:path";
 
 export function createOperationLock({
   path,
-  staleAfterMs = 120000,
   makeDirectory = mkdir,
   openFile = open,
-  statFile = stat,
   remove = unlink,
 } = {}) {
   if (!path)
@@ -30,18 +28,12 @@ export function createOperationLock({
           await remove(path).catch(() => {});
         }
         if (error.code === "EEXIST") {
-          try {
-            const age = Date.now() - (await statFile(path)).mtimeMs;
-            if (age > staleAfterMs) await remove(path);
-            else
-              throw Object.assign(new Error("cold bootstrap previously in progress"), {
-                statusCode: 409,
-              });
-          } catch (staleError) {
-            if (staleError.statusCode) throw staleError;
-            if (staleError.code !== "ENOENT") throw staleError;
-          }
-          return this.run(operation);
+          throw Object.assign(
+            new Error("cold bootstrap lock exists and requires operator review"),
+            {
+              statusCode: 409,
+            },
+          );
         }
         throw error;
       }

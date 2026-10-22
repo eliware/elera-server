@@ -25,10 +25,12 @@ export function createRecoveryPlanner({
     debug("Evaluating recovery plan");
     let evidence;
     let failures = [];
+    let activePrimary = false;
     try {
       const collected = await collect();
       evidence = collected.evidence;
       failures = collected.failures ?? [];
+      activePrimary = collected.activePrimary === true;
     } catch (error) {
       return blocked({
         reason: error.message,
@@ -36,17 +38,10 @@ export function createRecoveryPlanner({
       });
     }
     await publishEvent({ type: "recovery.evidence-collected", evidence });
-    const active = evidence.find((item) => isActivePrimary(item, evidence));
-    if (active)
-      return {
-        eligible: true,
-        mode: "join",
-        reason: "primary component previously exists",
-        ...(Number.isInteger(active.galera.clusterSize) && active.galera.clusterSize > 0
-          ? { expectedMembership: active.galera.clusterSize }
-          : {}),
-        evidence,
-      };
+    const active =
+      (activePrimary && evidence.find((item) => isActivePrimary(item, evidence))) ||
+      evidence.find((item) => isActivePrimary(item, evidence));
+    if (active) return joinPlan(active, evidence);
     const requiredEvidence = Math.floor(nodes.length / 2) + 1;
     const mismatch = failures.find(
       (failure) => failure?.code === "RECOVERY_EVIDENCE_IDENTITY_MISMATCH",
@@ -72,4 +67,16 @@ export function createRecoveryPlanner({
     });
   }
   return { plan };
+}
+
+function joinPlan(active, evidence) {
+  return {
+    eligible: true,
+    mode: "join",
+    reason: "primary component previously exists",
+    ...(Number.isInteger(active.galera.clusterSize) && active.galera.clusterSize > 0
+      ? { expectedMembership: active.galera.clusterSize }
+      : {}),
+    evidence,
+  };
 }

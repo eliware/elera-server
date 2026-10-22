@@ -1,5 +1,6 @@
 import { expect, jest, test } from "@jest/globals";
 import { createColdRecoveryProtocol } from "../../../src/cluster/cold-bootstrap/protocol.mjs";
+import { recoveryLeaseClaims } from "../../../test-fixtures/recovery-lease-claims.mjs";
 
 jest.useFakeTimers();
 const evidence = (node, seqno) => ({
@@ -63,19 +64,90 @@ test("normalizes top-level evidence and rejects unknown completion epochs", asyn
     store,
   });
   await expect(protocol.plan()).resolves.toMatchObject({ eligible: true });
-  await expect(
-    protocol.authorize({ epoch: "wrong", acknowledgements: "a.example.test" }),
-  ).rejects.toMatchObject({ statusCode: 409 });
+  await expect(protocol.authorize({ epoch: "wrong", leaseClaims: [] })).rejects.toMatchObject({
+    statusCode: 409,
+  });
   await expect(
     protocol.complete({ epoch: "wrong", membership: ["a.example.test"] }),
   ).rejects.toMatchObject({
     statusCode: 409,
   });
   const plan = await protocol.plan();
+  expect(plan).toMatchObject({ eligible: true, phase: "evidence" });
   await expect(
-    protocol.authorize({ epoch: plan.epoch, acknowledgements: "not-an-array" }),
-  ).rejects.toThrow("full-cluster");
+    protocol.authorize({ epoch: plan.epoch, leaseClaims: "not-an-array" }),
+  ).rejects.toThrow("authenticated recovery lease claims");
   await expect(protocol.beginBootstrap()).rejects.toMatchObject({ statusCode: 409 });
+});
+
+test("rejects forged lease names and unauthenticated claims", async () => {
+  const store = {
+    async read() {},
+    async write(value) {
+      return value;
+    },
+  };
+  const protocol = createColdRecoveryProtocol({
+    nodes: [
+      { name: "a.example.test", local: true },
+      { name: "b.example.test", url: "http://b.example.test" },
+      { name: "c.example.test", url: "http://c.example.test" },
+    ],
+    localEvidence: async () => evidence("a.example.test", 3),
+    fetchEvidence: async (url) => evidence(new URL(url).hostname, 2),
+    store,
+  });
+  const plan = await protocol.plan();
+  expect(plan).toMatchObject({ eligible: true, phase: "evidence" });
+  await expect(
+    protocol.authorize({
+      epoch: plan.epoch,
+      acknowledgements: ["a.example.test", "b.example.test", "c.example.test"],
+    }),
+  ).rejects.toThrow("full-cluster authorization");
+  await expect(
+    protocol.authorize({
+      epoch: plan.epoch,
+      leaseClaims: [
+        {
+          member: "a.example.test",
+          epoch: plan.epoch,
+          winner: "a.example.test",
+          granted: true,
+          authenticated: false,
+        },
+      ],
+    }),
+  ).rejects.toMatchObject({ statusCode: 403 });
+});
+
+test("keeps the persisted epoch when authorization persistence fails", async () => {
+  const store = {
+    value: undefined,
+    async read() {
+      return this.value;
+    },
+    async write(value) {
+      if (value.phase === "authorized") throw new Error("disk failure");
+      this.value = value;
+      return value;
+    },
+  };
+  const protocol = createColdRecoveryProtocol({
+    nodes: [{ name: "a.example.test", local: true }],
+    localEvidence: async () => evidence("a.example.test", 3),
+    fetchEvidence: async () => {},
+    store,
+  });
+  const plan = await protocol.plan();
+  expect(plan).toMatchObject({ eligible: true, phase: "evidence" });
+  await expect(
+    protocol.authorize({
+      epoch: plan.epoch,
+      leaseClaims: recoveryLeaseClaims(plan.epoch, "a.example.test", ["a.example.test"]),
+    }),
+  ).rejects.toThrow("disk failure");
+  await expect(protocol.status()).resolves.toMatchObject({ phase: "evidence" });
 });
 
 test("fails closed when evidence collection throws and can retry with fresh evidence", async () => {
@@ -169,7 +241,10 @@ test("authorizes a recovery epoch and preserves identity mismatch refusals on re
   });
   const plan = await protocol.plan();
   await expect(
-    protocol.authorize({ epoch: plan.epoch, acknowledgements: ["a.example.test"] }),
+    protocol.authorize({
+      epoch: plan.epoch,
+      leaseClaims: recoveryLeaseClaims(plan.epoch, "a.example.test", ["a.example.test"]),
+    }),
   ).resolves.toMatchObject({ phase: "authorized" });
   expect(debug).toHaveBeenCalled();
 
