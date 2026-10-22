@@ -72,3 +72,25 @@ test("skips bootstrap state for a non-bootstrap decision", () => {
   });
   expect(recoveryState.set).not.toHaveBeenCalled();
 });
+
+test("supports standalone startup without cluster evidence", () => {
+  createServices.mockReturnValueOnce({});
+  createColdBootstrap.mockReturnValueOnce({});
+  const state = {};
+  wireSupervisorStartupServices({
+    recoveryResult: {
+      members: [{ name: "node-a.example.test" }],
+      startupDecision: { mode: "standalone" },
+    },
+    state,
+    config: { elera: false },
+    recoveryState: { set: jest.fn() },
+    recoveryAudit: {},
+    health: {},
+    log: { info: jest.fn() },
+  });
+  expect(state.coldEvidence).toBeUndefined();
+  expect(createColdBootstrap).toHaveBeenLastCalledWith(
+    expect.objectContaining({ localEvidence: undefined, remoteEvidence: undefined }),
+  );
+});

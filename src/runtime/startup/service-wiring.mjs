@@ -19,7 +19,7 @@ export function wireSupervisorStartupServices(options) {
   const { startupDecision } = recoveryResult;
   state.coldRecoveryProtocol = recoveryResult.coldRecoveryProtocol;
   state.recoveryCompletion = recoveryResult.recoveryCompletion;
-  state.coldEvidence = localEvidence.local;
+  state.coldEvidence = localEvidence?.local;
   if (config.elera && startupDecision.mode === "bootstrap" && startupDecision.localWinner === true)
     recoveryState.set("bootstrapping", { epoch: startupDecision.epoch });
   log.info("Startup recovery decision completed", {
@@ -30,8 +30,8 @@ export function wireSupervisorStartupServices(options) {
   });
   state.coldBootstrapService = createSupervisorColdBootstrap({
     members,
-    localEvidence: localEvidence.local,
-    remoteEvidence: localEvidence.remote,
+    localEvidence: localEvidence?.local,
+    remoteEvidence: localEvidence?.remote,
     bootstrapLocal: () => state.coldBootstrapLocal?.(),
     config,
     environment,
