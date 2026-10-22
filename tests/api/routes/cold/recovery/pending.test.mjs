@@ -13,7 +13,12 @@ test("reports pending recovery plans and unavailable recovery actions", () => {
   ).toBe(true);
   expect(response.json).toHaveBeenCalledWith(
     200,
-    expect.objectContaining({ data: expect.objectContaining({ mode: "blocked" }) }),
+    expect.objectContaining({
+      data: expect.objectContaining({
+        mode: "blocked",
+        reason: "recovery protocol is still initializing",
+      }),
+    }),
   );
   expect(
     handlePendingColdRecoveryRoute({

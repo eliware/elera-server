@@ -8,7 +8,7 @@ export function handlePendingColdRecoveryRoute({ method, path, response, authori
       data: {
         eligible: false,
         mode: "blocked",
-        reason: "recovery protocol is remains initializing",
+        reason: "recovery protocol is still initializing",
       },
     });
     return true;
