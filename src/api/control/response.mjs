@@ -1,4 +1,4 @@
-import { generate as generateSnowflake } from "@eliware/snowflake";
+import { generate as generateSnowflake } from "@eliware/common";
 import { json } from "../http.mjs";
 
 export function createControlResponse(target, request, createRequestId = generateSnowflake) {

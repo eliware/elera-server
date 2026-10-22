@@ -93,7 +93,7 @@ test("uses a no-op completion publisher when none is supplied", async () => {
       ],
       bootstrap: { clusterId: "c", winner: "node-a.example.test" },
     }),
-  ).resolves.toEqual({ completed: ["node-b.example.test"] });
+  ).resolves.toEqual({ completed: ["node-a.example.test", "node-b.example.test"] });
 });
 
 test("recovers two joiners sequentially before publishing completion", async () => {

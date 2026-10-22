@@ -1,4 +1,4 @@
-import { generate as generateSnowflake } from "@eliware/snowflake";
+import { generate as generateSnowflake } from "@eliware/common";
 import { identifier, literal } from "../../accounts/sql.mjs";
 import { validName } from "./validation.mjs";
 

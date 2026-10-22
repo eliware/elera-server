@@ -19,7 +19,8 @@ by that identity:
 - `/tmp` — MariaDB/InnoDB temporary files when the root filesystem is read-only.
 
 Managed databases expose a logical name to CLI and application callers. The
-supervisor stores a generated Snowflake-backed `physical_name` internally and
+supervisor stores a generated Snowflake-backed `physical_name` internally.
+The supervisor imports Snowflake ID generation from `@eliware/common` and
 uses that name for MariaDB schemas, identities, grants, and credential leases.
 
 - `/var/lib/mysql/elera-state` — writable supervisor intent state and generated

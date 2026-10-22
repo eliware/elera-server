@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { generate as generateSnowflake } from "@eliware/snowflake";
+import { generate as generateSnowflake } from "@eliware/common";
 import { literal } from "../accounts/sql.mjs";
 
 const name = (value, label) => {

@@ -41,6 +41,7 @@ Keep credentials, tokens, secrets, and private data out of logs and Git.
 ## Changes
 
 Keep docs current.
+Use shared Snowflake APIs from `@eliware/common`.
 Follow the shared repository rules.
 
 ## Application
@@ -55,7 +56,7 @@ Run the full `npm test` suite for final validation before a commit, milestone, o
 
 Image: ghcr.io/eliware/elera-server
 
-Pull command: docker pull ghcr.io/eliware/elera-server:v13.0.0
+Pull command: docker pull ghcr.io/eliware/elera-server:v15.0.0
 
 Supported tags: vMAJOR.MINOR.PATCH
 

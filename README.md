@@ -36,7 +36,7 @@ Run npm ci to install the locked packages.
 ## Usage
 
 Build the container image from this repository root.
-Pull `ghcr.io/eliware/elera-server:v13.0.0` for Linux on `amd64`.
+Pull `ghcr.io/eliware/elera-server:v15.0.0` for Linux on `amd64`.
 Use an immutable version tag and recorded SHA-256 digest for deployment.
 GHCR package settings control image visibility and pull access.
 Read the [documentation index](docs/README.md) and [specification index](specs/README.md).

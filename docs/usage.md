@@ -2,7 +2,7 @@
 
 Run Elera in a Linux container. Use Node.js 26 or later.
 
-Build the image from the repository root. Pull `ghcr.io/eliware/elera-server:v13.0.0` for Linux on `amd64`.
+Build the image from the repository root. Pull `ghcr.io/eliware/elera-server:v15.0.0` for Linux on `amd64`.
 Set image visibility and pull access in GHCR package settings.
 
 Attach a dedicated volume at `/var/lib/mysql`. Attach `/run/mysqld` and `/run/elera` as writable paths.

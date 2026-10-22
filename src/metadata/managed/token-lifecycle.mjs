@@ -1,4 +1,4 @@
-import { generate as generateSnowflake } from "@eliware/snowflake";
+import { generate as generateSnowflake } from "@eliware/common";
 import { literal } from "../../accounts/sql.mjs";
 import { tokenMatchesHash } from "../token-authentication.mjs";
 import { validName, hashToken, createToken } from "./validation.mjs";
