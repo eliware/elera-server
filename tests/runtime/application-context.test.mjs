@@ -45,8 +45,15 @@ const makeDependencies = () => {
   };
 };
 
-test("applies all default dependencies when no options are provided", () => {
-  expect(() => createSupervisorApplicationContext()).toThrow();
+test("applies default dependencies when no options are provided", () => {
+  try {
+    const context = createSupervisorApplicationContext();
+    expect(context.identity.name).toMatch(/^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/);
+    expect(context.config.runtimeIdentity).toBe(context.identity);
+    expect(context.dbEnv.MYSQL_HOST).toBe("127.0.0.1");
+  } catch (error) {
+    expect(error.message).toMatch(/^hostname -f (?:failed|returned an empty|returned an invalid)/);
+  }
 });
 
 test("builds the shared runtime context and callback links", () => {

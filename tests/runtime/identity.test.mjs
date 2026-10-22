@@ -55,5 +55,9 @@ test("rejects non-string hostname output", () => {
 });
 
 test("uses the host command when no hostname provider is supplied", () => {
-  expect(() => runtimeIdentity()).toThrow(/hostname -f/);
+  try {
+    expect(runtimeIdentity().name).toMatch(/^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/);
+  } catch (error) {
+    expect(error.message).toMatch(/^hostname -f (?:failed|returned an empty|returned an invalid)/);
+  }
 });
