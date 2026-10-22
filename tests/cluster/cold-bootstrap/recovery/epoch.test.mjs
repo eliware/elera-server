@@ -82,20 +82,20 @@ test("requires identified, distinct full-cluster acknowledgements", () => {
     }),
   ).toThrow("duplicate");
 });
-test("supports an explicitly reduced supervisor quorum for forced recovery", () => {
+test("rejects an explicitly reduced supervisor quorum for forced recovery", () => {
   const epoch = createRecoveryEpoch({
     clusterId: "u",
     evidence,
     winner: evidence[0],
     quorum: ["a.example.test", "b.example.test", "c.example.test"],
   });
-  const authorized = transitionRecoveryEpoch(epoch, "authorized", {
-    acknowledgements: ["a.example.test", "b.example.test"],
-    requiredAcknowledgements: 2,
-    operatorForced: true,
-  });
-  expect(authorized.requiredAcknowledgements).toBe(2);
-  expect(authorized.acknowledgements).toEqual(new Set(["a.example.test", "b.example.test"]));
+  expect(() =>
+    transitionRecoveryEpoch(epoch, "authorized", {
+      acknowledgements: ["a.example.test", "b.example.test"],
+      requiredAcknowledgements: 2,
+      operatorForced: true,
+    }),
+  ).toThrow("full configured supervisor quorum");
 });
 test("validates reduced quorum bounds and acknowledgements", () => {
   const epoch = createRecoveryEpoch({
@@ -109,13 +109,13 @@ test("validates reduced quorum bounds and acknowledgements", () => {
       acknowledgements: ["a"],
       requiredAcknowledgements: 0,
     }),
-  ).toThrow("valid supervisor quorum");
+  ).toThrow("full configured supervisor quorum");
   expect(() =>
     transitionRecoveryEpoch(epoch, "authorized", {
       acknowledgements: ["a"],
       requiredAcknowledgements: 2,
     }),
-  ).toThrow("required supervisor quorum");
+  ).toThrow("full configured supervisor quorum");
 });
 test("rejects a completion with the wrong winner", () => {
   const epoch = createRecoveryEpoch({

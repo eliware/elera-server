@@ -17,6 +17,8 @@ export async function handleObservationRoute({
   observationStore,
   identity,
   peerIdentity,
+  auth,
+  internal = false,
 }) {
   if (!identity?.name) throw new Error("runtime identity is required for observation routes");
   const store = observationStore ?? {
@@ -28,14 +30,17 @@ export async function handleObservationRoute({
   };
   const expectedSize = Number(getConfig?.().clusterSize ?? (observations.length || 1));
   if (method === "GET" && path === "/api/v1/cluster/observations") {
+    if (!allowed(auth, "cluster:read")) throw forbidden();
     response.json(200, { ok: true, data: store.snapshot() });
     return true;
   }
   if (method === "GET" && path === "/api/v1/cluster/quorum") {
+    if (!allowed(auth, "cluster:read")) throw forbidden();
     response.json(200, { ok: true, data: evaluateQuorum(store.snapshot(), { expectedSize }) });
     return true;
   }
   if (method === "GET" && path === "/api/v1/cluster/topology") {
+    if (!allowed(auth, "cluster:read")) throw forbidden();
     response.json(200, {
       ok: true,
       operation: "cluster.topology",
@@ -48,6 +53,7 @@ export async function handleObservationRoute({
     return true;
   }
   if (method === "POST" && path === "/api/v1/cluster/observations") {
+    if (!internal) throw forbidden();
     const body = await readBody(request);
     if (!body.nodeId)
       throw Object.assign(new Error("observation nodeId is required"), { statusCode: 400 });
@@ -68,6 +74,11 @@ export async function handleObservationRoute({
         ),
         { statusCode: 409 },
       );
+    const members = getConfig?.().intent?.cluster?.members ?? [];
+    if (!members.some((member) => member?.name === body.nodeId))
+      throw Object.assign(new Error("observation identity is not a configured cluster member"), {
+        statusCode: 403,
+      });
     const item = createObservation({ ...body, clusterId: body.clusterId ?? "local-elera" });
     const result = store.upsert(item);
     if (!result.accepted) {
@@ -79,3 +90,8 @@ export async function handleObservationRoute({
   }
   return false;
 }
+
+const allowed = (auth, scope) =>
+  auth?.root || auth?.scopes?.includes("*") || auth?.scopes?.includes(scope);
+const forbidden = () =>
+  Object.assign(new Error("observation authorization is required"), { statusCode: 403 });

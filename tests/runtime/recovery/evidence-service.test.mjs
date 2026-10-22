@@ -26,6 +26,7 @@ test("starts evidence routes on a unified listener", async () => {
       identity: { name: "node-a.example.test" },
       dataDir: "/data",
       httpPort: 8080,
+      token: "token",
       createEvidence: () => evidence,
       createCompletion: () => ({}),
       createLease: () => ({}),

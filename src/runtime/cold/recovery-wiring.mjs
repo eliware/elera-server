@@ -31,7 +31,7 @@ export function createSupervisorColdRecovery({
     localNode: identity,
     dataDir: config.dataDir,
     health,
-    token: environment.ROOT_TOKEN,
+    token: environment.ELERA_PEER_TOKEN ?? environment.ROOT_TOKEN,
     read: undefined,
     run: runRecover,
     log,

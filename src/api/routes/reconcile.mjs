@@ -1,4 +1,5 @@
 import { readBody } from "../http.mjs";
+import { applyReconcileIdempotently } from "./reconcile-idempotency.mjs";
 
 const allowed = (auth) => auth?.root || auth?.scopes?.includes("metadata:reconcile");
 
@@ -22,6 +23,12 @@ export async function handleReconcileRoute({ method, path, request, response, au
     return false;
   if (!allowed(auth)) return false;
   const body = await readBody(request).catch(() => ({}));
+  const idempotencyKey = request.headers?.["idempotency-key"] ?? body.idempotencyKey;
+  const apply = (desired) => {
+    if (body.confirm !== true)
+      throw Object.assign(new Error("restore apply requires confirm: true"), { statusCode: 409 });
+    return applyReconcileIdempotently(reconciler, path, desired, body, idempotencyKey);
+  };
   if (method === "POST" && path === "/api/v1/reconcile/plan") {
     response.json(200, {
       ok: true,
@@ -34,7 +41,7 @@ export async function handleReconcileRoute({ method, path, request, response, au
     response.json(200, {
       ok: true,
       operation: "reconcile.apply",
-      data: await reconciler.apply(desiredPayload(body, {}), body),
+      data: await apply(desiredPayload(body, {})),
     });
     return true;
   }
@@ -59,7 +66,7 @@ export async function handleReconcileRoute({ method, path, request, response, au
     response.json(200, {
       ok: true,
       operation: "restore.metadata.apply",
-      data: await reconciler.apply(desiredPayload(body, {}), body),
+      data: await apply(desiredPayload(body, {})),
     });
     return true;
   }
@@ -75,7 +82,7 @@ export async function handleReconcileRoute({ method, path, request, response, au
     response.json(200, {
       ok: true,
       operation: "restore.accounts.apply",
-      data: await reconciler.apply({ accounts: accountPayload(body) }, body),
+      data: await apply({ accounts: accountPayload(body) }),
     });
     return true;
   }

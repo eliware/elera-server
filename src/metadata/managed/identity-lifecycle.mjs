@@ -59,25 +59,30 @@ export function createManagedIdentityLifecycle({ query, q, box, createDatabase }
         grants: Array.isArray(grants_json) ? grants_json : JSON.parse(grants_json ?? "[]"),
       }));
     },
-    async revokeIdentity(identity) {
-      await q(`UPDATE elera_meta.identities SET active=FALSE WHERE name=${literal(identity)}`);
-      return { identity, revoked: true };
-    },
-    async rotateIdentity(identity) {
+    async revokeIdentity({ identity, application } = {}) {
       validName(identity, "identity");
+      validName(application, "application");
+      await q(
+        `UPDATE elera_meta.identities SET active=FALSE WHERE name=${literal(identity)} AND application_name=${literal(application)}`,
+      );
+      return { identity, application, revoked: true };
+    },
+    async rotateIdentity({ identity, application } = {}) {
+      validName(identity, "identity");
+      validName(application, "application");
       if (!box) throw new Error("credential encryption is not configured");
       const secret = createPassword();
       const [rows] = await q(
-        `SELECT username FROM elera_meta.identities WHERE name=${literal(identity)} AND active=TRUE`,
+        `SELECT username FROM elera_meta.identities WHERE name=${literal(identity)} AND application_name=${literal(application)} AND active=TRUE`,
       );
       const username = rows[0]?.username;
       if (!username) throw Object.assign(new Error("identity not found"), { statusCode: 404 });
       await q(
-        `UPDATE elera_meta.identities SET credential_ciphertext=${literal(box.seal(secret))} WHERE name=${literal(identity)}`,
+        `UPDATE elera_meta.identities SET credential_ciphertext=${literal(box.seal(secret))} WHERE name=${literal(identity)} AND application_name=${literal(application)}`,
       );
       await query(`ALTER USER ${literal(username)}@'%' IDENTIFIED BY ${literal(secret)}`);
       await query("FLUSH PRIVILEGES");
-      return { identity, username, password: secret, rotated: true };
+      return { identity, application, username, password: secret, rotated: true };
     },
   };
 }

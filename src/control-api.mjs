@@ -33,6 +33,7 @@ export function createControlApi(options = {}) {
         dataDir,
         observations: options.observations ?? [],
         auth,
+        peerIdentity: auth?.identity ? { name: auth.identity } : undefined,
         identity,
         internal,
       });

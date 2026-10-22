@@ -75,7 +75,10 @@ test("refreshes and revokes managed credentials", async () => {
   );
   data.context.url.pathname = "/api/v1/credentials/revoke";
   await handleControlCredentialRoute(data.context, { managed, bundle });
-  expect(managed.revokeIdentity).toHaveBeenCalledWith("runtime");
+  expect(managed.revokeIdentity).toHaveBeenCalledWith({
+    identity: "runtime",
+    application: undefined,
+  });
 });
 
 test("returns false for unrelated requests and reports missing management", async () => {
@@ -88,4 +91,24 @@ test("returns false for unrelated requests and reports missing management", asyn
     501,
     expect.objectContaining({ error: "credential management is not configured" }),
   );
+});
+
+test("rejects credential revocation for another application", async () => {
+  const data = setup(
+    "POST",
+    "/api/v1/credentials/revoke",
+    {
+      identity: "runtime",
+      application: "other",
+    },
+    { auth: { application: "app" } },
+  );
+  data.context.auth = { application: "app" };
+  const managed = { lease: jest.fn(), revokeIdentity: jest.fn() };
+  await handleControlCredentialRoute(data.context, { managed });
+  expect(data.response.json).toHaveBeenCalledWith(
+    403,
+    expect.objectContaining({ error: "identity belongs to another application" }),
+  );
+  expect(managed.revokeIdentity).not.toHaveBeenCalled();
 });

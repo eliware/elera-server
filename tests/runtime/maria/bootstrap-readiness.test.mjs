@@ -143,17 +143,17 @@ test("handles bootstrap watch timeout and completion", async () => {
         wsrep_cluster_size: "1",
       },
     }),
-  ).toBe(true);
+  ).toBe(false);
   expect(
     watchOptions.isReady({
       values: {
         wsrep_local_state_comment: "Synced",
         wsrep_ready: "ON",
         wsrep_cluster_status: "Primary",
-        wsrep_cluster_size: "0",
+        wsrep_cluster_size: "3",
       },
     }),
-  ).toBe(false);
+  ).toBe(true);
   expect(value.recoveryAudit.failure).toHaveBeenCalled();
   expect(value.coldRecoveryProtocol.complete).toHaveBeenCalled();
   expect(value.recoveryState.set).toHaveBeenCalledWith("complete", expect.any(Object));
@@ -224,4 +224,26 @@ test("starts a bootstrap readiness watch", () => {
     isCurrent: () => true,
   });
   expect(createWatch).toHaveBeenCalled();
+});
+
+test("waits for every recovery member to report a ready Primary", () => {
+  let watchOptions;
+  const options = readinessOptions({
+    startupDecision: { epoch: 1, recoveryEpoch: { quorum: ["a", "b", "c"] } },
+    createWatch: (value) => {
+      watchOptions = value;
+      return async () => ({ ready: false });
+    },
+  });
+  watchMariaDbBootstrapReadiness(options);
+  const result = (size) => ({
+    values: {
+      wsrep_local_state_comment: "Synced",
+      wsrep_ready: "ON",
+      wsrep_cluster_status: "Primary",
+      wsrep_cluster_size: String(size),
+    },
+  });
+  expect(watchOptions.isReady(result(3))).toBe(true);
+  expect(watchOptions.isReady(result(1))).toBe(false);
 });

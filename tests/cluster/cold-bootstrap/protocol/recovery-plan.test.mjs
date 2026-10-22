@@ -82,7 +82,7 @@ test("blocks collection failures and partial evidence with useful reasons", asyn
   });
   await expect(partial.planner.plan()).resolves.toMatchObject({
     code: "INSUFFICIENT_RECOVERY_EVIDENCE",
-    reason: expect.stringContaining("all configured supervisors"),
+    reason: expect.stringContaining("validated majority"),
   });
   const mismatched = makePlanner({
     nodes,

@@ -91,19 +91,25 @@ test("validates managed names, purposes, and grants", async () => {
   await expect(
     unconfigured.createIdentity({ application: "app", databaseName: "db", identity: "id" }),
   ).rejects.toThrow("encryption");
-  await expect(unconfigured.rotateIdentity("id")).rejects.toThrow("encryption");
+  await expect(unconfigured.rotateIdentity({ identity: "id", application: "app" })).rejects.toThrow(
+    "encryption",
+  );
   await expect(unconfigured.lease({ identity: "id" })).rejects.toThrow("encryption");
   const rotating = createManagedMetadataForTest({
     credentialKey: "test-key",
     query: async (sql) =>
       sql.includes("SELECT username") ? [[{ username: "payments_runtime" }]] : [[]],
   });
-  expect((await rotating.rotateIdentity("runtime")).rotated).toBe(true);
+  expect((await rotating.rotateIdentity({ identity: "runtime", application: "app" })).rotated).toBe(
+    true,
+  );
   const missingIdentity = createManagedMetadataForTest({
     credentialKey: "test-key",
     query: async () => [[]],
   });
-  await expect(missingIdentity.rotateIdentity("runtime")).rejects.toThrow("identity not found");
+  await expect(
+    missingIdentity.rotateIdentity({ identity: "runtime", application: "app" }),
+  ).rejects.toThrow("identity not found");
   const tokenIdentityMissing = createManagedMetadataForTest({
     credentialKey: "test-key",
     query: async () => [[]],

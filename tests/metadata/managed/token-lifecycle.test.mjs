@@ -42,6 +42,7 @@ test("resolves scoped tokens to their application, database, identity, and scope
   expect(authenticationSql).toContain("LEFT JOIN");
   expect(authenticationSql).toContain("d.name AS database");
   expect(authenticationSql).toContain("d.physical_name AS physical_database");
+  expect(authenticationSql).toContain(`t.token_hash='${hash}'`);
 });
 
 test("keeps app-admin tokens application-scoped without assigning a database identity", async () => {

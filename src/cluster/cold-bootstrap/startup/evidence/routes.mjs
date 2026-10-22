@@ -10,9 +10,11 @@ async function readRequestBody(request) {
 export function createStartupEvidenceRoutes({ evidence, lease, completion, token, log = {} } = {}) {
   if (typeof evidence !== "function")
     throw new TypeError("startup proof route dependencies are required");
+  if (typeof token !== "string" || token.length === 0)
+    throw new TypeError("startup evidence token is required");
   return async function handleStartupEvidenceRoute(request, response) {
     if (request.method === "POST" && request.url === "/api/v1/cluster/cold-bootstrap/lease") {
-      if (token && request.headers?.authorization !== `Bearer ${token}`) {
+      if (request.headers?.authorization !== `Bearer ${token}`) {
         response.writeHead(401).end();
         return true;
       }
@@ -34,7 +36,7 @@ export function createStartupEvidenceRoutes({ evidence, lease, completion, token
       return true;
     }
     if (request.method === "GET" && request.url === "/api/v1/cluster/cold-bootstrap/completion") {
-      if (token && request.headers?.authorization !== `Bearer ${token}`) {
+      if (request.headers?.authorization !== `Bearer ${token}`) {
         response.writeHead(401).end();
         return true;
       }
@@ -50,7 +52,7 @@ export function createStartupEvidenceRoutes({ evidence, lease, completion, token
     }
     if (request.method !== "GET" || request.url !== "/api/v1/cluster/cold-bootstrap/evidence")
       return false;
-    if (token && request.headers?.authorization !== `Bearer ${token}`) {
+    if (request.headers?.authorization !== `Bearer ${token}`) {
       response.writeHead(401).end();
       return true;
     }

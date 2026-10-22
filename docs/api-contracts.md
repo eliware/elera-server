@@ -362,6 +362,12 @@ Observations include the observer, subject node, sequence, timestamp,
 readiness, Elera state, eligibility, and weight. Observations expire and must
 not override local safety checks.
 
+Observation reads and quorum reads require `cluster:read`. Observation writes
+require the authenticated peer token and a configured member identity.
+
+Traffic status requires `cluster:read`. Drain and undrain operations require
+`cluster:operate` because they change cluster-wide routing state.
+
 ## Restore contract
 
 Metadata and account restoration are logical operations. Raw restoration of

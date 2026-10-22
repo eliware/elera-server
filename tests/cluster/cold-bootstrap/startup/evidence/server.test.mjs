@@ -50,6 +50,7 @@ test("serves authenticated startup evidence and rejects other requests", async (
 test("returns a service error when evidence collection fails", async () => {
   const service = createStartupEvidenceServer({
     port: 0,
+    token: "secret",
     evidence: async () => {
       throw new Error("not ready");
     },
@@ -57,7 +58,7 @@ test("returns a service error when evidence collection fails", async () => {
   await service.listen();
   const response = await requestLocal(
     `http://127.0.0.1:${service.server.address().port}/api/v1/cluster/cold-bootstrap/evidence`,
-    { headers: { connection: "close" } },
+    { headers: { authorization: "Bearer secret", connection: "close" } },
   );
   expect(response.status).toBe(503);
   await response.text();
@@ -65,15 +66,23 @@ test("returns a service error when evidence collection fails", async () => {
 });
 
 test("can close before it has listened", async () => {
-  await createStartupEvidenceServer({ port: 0, evidence: async () => ({}) }).close();
+  await createStartupEvidenceServer({
+    port: 0,
+    token: "secret",
+    evidence: async () => ({}),
+  }).close();
 });
 
 test("rejects lease requests without a configured lease", async () => {
-  const service = createStartupEvidenceServer({ port: 0, evidence: async () => ({}) });
+  const service = createStartupEvidenceServer({
+    port: 0,
+    token: "secret",
+    evidence: async () => ({}),
+  });
   await service.listen();
   const response = await requestLocal(
     `http://127.0.0.1:${service.server.address().port}/api/v1/cluster/cold-bootstrap/lease`,
-    { method: "POST" },
+    { method: "POST", headers: { authorization: "Bearer secret" } },
   );
   expect(response.status).toBe(503);
   await response.text();
@@ -142,6 +151,7 @@ test("serves and authorizes completion events", async () => {
 test("returns not found when completion is unavailable and maps lease errors", async () => {
   const service = createStartupEvidenceServer({
     port: 0,
+    token: "secret",
     evidence: async () => ({}),
     completion: { read: () => undefined },
     lease: {
@@ -154,13 +164,13 @@ test("returns not found when completion is unavailable and maps lease errors", a
   const port = service.server.address().port;
   const completion = await requestLocal(
     `http://127.0.0.1:${port}/api/v1/cluster/cold-bootstrap/completion`,
-    { headers: { connection: "close" } },
+    { headers: { authorization: "Bearer secret", connection: "close" } },
   );
   expect(completion.status).toBe(404);
   await completion.text();
   const lease = await requestLocal(`http://127.0.0.1:${port}/api/v1/cluster/cold-bootstrap/lease`, {
     method: "POST",
-    headers: { connection: "close" },
+    headers: { authorization: "Bearer secret", connection: "close" },
     body: "{}",
   });
   expect(lease.status).toBe(409);

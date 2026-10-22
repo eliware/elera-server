@@ -22,7 +22,7 @@ const options = (overrides = {}) => ({
   request: request({ node: "peer.example.test" }),
   response: response(),
   identity: { name: "node.example.test" },
-  members: [{ name: "peer.example.test" }],
+  members: [{ name: "peer.example.test", address: "10.0.0.2" }],
   onJoin: async (body) => body,
   ...overrides,
 });
@@ -31,6 +31,7 @@ test("accepts a configured peer and rejects invalid targets", async () => {
   const accepted = options();
   await expect(handlePendingRecoveryJoinRoute(accepted)).resolves.toBe(true);
   expect(accepted.response.status).toBe(202);
+  expect(JSON.parse(accepted.response.body).data).toMatchObject({ winnerAddress: "10.0.0.2" });
   for (const [body, status] of [
     [{ node: "bad" }, 400],
     [{ node: "node.example.test" }, 409],

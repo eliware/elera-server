@@ -1,4 +1,4 @@
-import { mkdir, open, readFile, unlink } from "node:fs/promises";
+import { mkdir, open, readFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
 const isFqdn = (value) =>
@@ -28,14 +28,12 @@ export function createRecoveryLease(
           const current = JSON.parse(await readFile(path, "utf8"));
           if (current.epoch === epoch && current.winner === winner)
             return { granted: true, epoch, winner, existing: true };
-          if (
+          const stale =
             staleAfterMs >= 0 &&
             Number.isFinite(Date.parse(current.claimedAt)) &&
-            now() - Date.parse(current.claimedAt) > staleAfterMs
-          ) {
-            await unlink(path);
-            return this.claim({ epoch, winner });
-          }
+            now() - Date.parse(current.claimedAt) > staleAfterMs;
+          if (stale)
+            return { granted: false, reason: "stale recovery lease requires operator cleanup" };
         } catch {}
         return { granted: false, reason: "recovery lease is held by different epoch" };
       }

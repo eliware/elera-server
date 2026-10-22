@@ -176,3 +176,13 @@ test("allows app-admin tokens to provision only their own application", async ()
     }),
   ).resolves.toBe(false);
 });
+
+test("rejects identity rotation across an app-admin application boundary", async () => {
+  const c = context("POST", "/api/v1/identities/rotate", {
+    identity: "runtime",
+    application: "other",
+  });
+  c.auth = { application: "billing", scopes: ["identity:rotate"] };
+  expect(await handleManagedRoute(c)).toBe(false);
+  expect(c.managed.rotateIdentity).not.toHaveBeenCalled();
+});

@@ -34,7 +34,7 @@ Use [.env.example](../.env.example) as a placeholder template. Replace every pla
 | `ELERA_EXPLICIT_START_MODE`    | None                               | Explicit `bootstrap` or `join` start mode. |
 | `SUPERVISOR_INTENT_JSON`       | Persisted intent or default intent | Optional JSON supervisor intent.           |
 
-Set `ROOT_TOKEN` before you call the control API. Set `ELERA_CREDENTIAL_KEY` before you use managed credentials.
+Set `ROOT_TOKEN` before you call the control API. Set `ELERA_PEER_TOKEN` for peer traffic. The supervisor uses `ROOT_TOKEN` when no peer token is set. Recovery startup fails closed when both tokens are unset. Set `ELERA_CREDENTIAL_KEY` before you use managed credentials.
 
 First initialization requires an authenticated `elera-cli` operation. Usual startup does not initialize or repair a data directory.
 Use the documented recovery API when the cluster cannot start from valid quorum data.

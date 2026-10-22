@@ -19,18 +19,10 @@ export function transitionRecoveryEpoch(epoch, phase, details = {}) {
     const acknowledgements = new Set(details.acknowledgements);
     const members = new Set(epoch.quorum);
     const requiredAcknowledgements = details.requiredAcknowledgements ?? epoch.quorum.length;
-    if (
-      !Number.isInteger(requiredAcknowledgements) ||
-      requiredAcknowledgements < 1 ||
-      requiredAcknowledgements > members.size
-    )
-      throw new Error("recovery epoch requires a valid supervisor quorum");
+    if (!Number.isInteger(requiredAcknowledgements) || requiredAcknowledgements !== members.size)
+      throw new Error("recovery epoch requires the full configured supervisor quorum");
     if (acknowledgements.size < requiredAcknowledgements)
-      throw new Error(
-        requiredAcknowledgements === members.size
-          ? "recovery epoch lacks full-cluster authorization"
-          : `recovery epoch lacks required supervisor quorum (${requiredAcknowledgements})`,
-      );
+      throw new Error("recovery epoch lacks full-cluster authorization");
     if ([...acknowledgements].some((node) => !members.has(node)))
       throw new Error("recovery epoch contains an unknown quorum member");
     if (acknowledgements.size !== details.acknowledgements.length)

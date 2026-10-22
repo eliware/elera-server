@@ -94,6 +94,20 @@ test("uses the default recovery decision path", () => {
   expect(result.protocol.store.path).toBe("/run/elera/cold-recovery.json");
 });
 
+test("uses the peer token before falling back to the root token", () => {
+  let evidenceOptions;
+  createSupervisorColdRecovery(
+    validOptions({
+      environment: { ROOT_TOKEN: "root", ELERA_PEER_TOKEN: "peer" },
+      createEvidence: (options) => {
+        evidenceOptions = options;
+        return { local: {}, remote: jest.fn() };
+      },
+    }),
+  );
+  expect(evidenceOptions.token).toBe("peer");
+});
+
 test("wires local and peer evidence into the recovery protocol", async () => {
   const evidence = { local: { state: "local" }, remote: jest.fn() };
   const store = { write: jest.fn() };

@@ -41,7 +41,10 @@ test("revokes an identity when its scope is allowed", async () => {
   const managed = { revokeIdentity: jest.fn().mockResolvedValue({ revoked: true }) };
   const request = context("/api/v1/identities/revoke", { identity: "runtime" }, managed);
   await handleManagedAccessRoute(request);
-  expect(managed.revokeIdentity).toHaveBeenCalledWith("runtime");
+  expect(managed.revokeIdentity).toHaveBeenCalledWith({
+    identity: "runtime",
+    application: undefined,
+  });
   expect(request.response.json).toHaveBeenCalledWith(
     200,
     expect.objectContaining({ operation: "identity.revoke" }),
@@ -68,4 +71,16 @@ test("rejects token operations without the required scope", async () => {
   ).resolves.toBe(false);
   expect(managed.issueToken).not.toHaveBeenCalled();
   expect(managed.revokeToken).not.toHaveBeenCalled();
+});
+
+test("rejects identity revocation across an app-admin application boundary", async () => {
+  const managed = { revokeIdentity: jest.fn() };
+  const request = context(
+    "/api/v1/identities/revoke",
+    { identity: "runtime", application: "other" },
+    managed,
+    { application: "app", scopes: ["identity:revoke"] },
+  );
+  await expect(handleManagedAccessRoute(request)).resolves.toBe(false);
+  expect(managed.revokeIdentity).not.toHaveBeenCalled();
 });

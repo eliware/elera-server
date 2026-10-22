@@ -6,7 +6,7 @@ peer no, readiness failure, or a missing data directory.
 Each supervisor publishes authenticated data containing its Galera UUID,
 saved and recovered sequence numbers, `safe_to_bootstrap`, data-directory
 status, current `Primary`/`Synced` state, data generation, and timestamp.
-Data must be complete, new, and from the same cluster UUID.
+Each received record must be new and match the recovery cluster UUID. A missing peer is allowed only when valid records remain from more than half of the members.
 
 Supervisors select the sole valid `safe_to_bootstrap` member, or if not the
 highest recovered sequence number. A node-name tie-break is permitted only
@@ -21,8 +21,9 @@ collected.
 
 Only the exact epoch’s quorum may authorize recovery. Only its winner may
 start with `--wsrep-new-cluster`. The winner must become `Primary` and `Synced`,
-and `wsrep_ready=ON` before publishing an authenticated `bootstrap-complete`
-handoff. Joiners remain stopped until that matching handoff is observed, then
+and every configured member must report the same available Primary membership
+before the winner publishes an authenticated `bootstrap-complete` handoff.
+Joiners remain stopped until that matching handoff is observed, then
 join without bootstrap and verify the UUID, SST/IST completes, membership, and `Synced`.
 
 Readiness remains `503` while recovery is pending, blocked, bootstrapping, or
@@ -47,3 +48,6 @@ Recovery endpoints:
 Write endpoints require the recovery-write scope or authenticated internal
 peer access. Data, decisions, authorizations, bootstrap, join, prevent, and
 refusal outcomes are auditable.
+
+An expired recovery lease remains fenced until an operator inspects and removes
+it. An operator must inspect an expired lease before removing it.

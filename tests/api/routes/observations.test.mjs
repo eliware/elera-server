@@ -7,6 +7,9 @@ const ctx = (method, path, body = {}) => {
     method,
     path,
     environment: {},
+    auth: { root: true },
+    internal: true,
+    getConfig: () => ({ intent: { cluster: { members: [{ name: identity.name }] } } }),
     identity,
     observations: [],
     request: {
@@ -81,5 +84,46 @@ test("rejects missing identities and invalid observation addresses", async () =>
     await expect(
       handleObservationRoute(ctx("POST", "/api/v1/cluster/observations", body)),
     ).rejects.toMatchObject({ statusCode: 400 });
+  }
+});
+
+test("requires read scopes and an authenticated configured peer for observations", async () => {
+  const read = ctx("GET", "/api/v1/cluster/quorum");
+  read.auth = { scopes: [] };
+  await expect(handleObservationRoute(read)).rejects.toMatchObject({ statusCode: 403 });
+  for (const path of ["/api/v1/cluster/observations", "/api/v1/cluster/topology"]) {
+    const denied = ctx("GET", path);
+    denied.auth = { scopes: [] };
+    await expect(handleObservationRoute(denied)).rejects.toMatchObject({ statusCode: 403 });
+  }
+  const write = ctx("POST", "/api/v1/cluster/observations", {
+    nodeId: "other.example.test",
+    address: "other.example.test",
+  });
+  write.internal = false;
+  await expect(handleObservationRoute(write)).rejects.toMatchObject({ statusCode: 403 });
+  const noInternalFlag = ctx("POST", "/api/v1/cluster/observations", {
+    nodeId: identity.name,
+  });
+  delete noInternalFlag.internal;
+  await expect(handleObservationRoute(noInternalFlag)).rejects.toMatchObject({ statusCode: 403 });
+  const missingConfig = ctx("POST", "/api/v1/cluster/observations", {
+    nodeId: identity.name,
+  });
+  missingConfig.getConfig = undefined;
+  await expect(handleObservationRoute(missingConfig)).rejects.toMatchObject({ statusCode: 403 });
+  const unknownPeer = ctx("POST", "/api/v1/cluster/observations", {
+    nodeId: "other.example.test",
+    address: "other.example.test",
+  });
+  await expect(handleObservationRoute(unknownPeer)).rejects.toMatchObject({ statusCode: 403 });
+});
+
+test("allows read-scoped access to observation and topology views", async () => {
+  for (const path of ["/api/v1/cluster/observations", "/api/v1/cluster/topology"]) {
+    const view = ctx("GET", path);
+    view.auth = { scopes: ["cluster:read"] };
+    await expect(handleObservationRoute(view)).resolves.toBe(true);
+    expect(view.out.status).toBe(200);
   }
 });

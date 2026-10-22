@@ -81,7 +81,11 @@ test("manages databases, identities, and scoped tokens without exposing policy S
     application: "payments",
     revoked: true,
   });
-  expect(await managed.revokeIdentity("runtime")).toEqual({ identity: "runtime", revoked: true });
+  expect(await managed.revokeIdentity({ identity: "runtime", application: "app" })).toEqual({
+    identity: "runtime",
+    application: "app",
+    revoked: true,
+  });
   expect(calls.some((sql) => sql.includes("CREATE DATABASE"))).toBe(true);
   await expect(
     managed.issueToken({ tokenName: "wrong-app-token", application: "other", identity: "runtime" }),

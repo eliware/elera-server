@@ -52,7 +52,10 @@ test("delegates credential revocation after route dispatch", async () => {
     }),
     target,
   );
-  expect(managed.revokeIdentity).toHaveBeenCalledWith("runtime");
+  expect(managed.revokeIdentity).toHaveBeenCalledWith({
+    identity: "runtime",
+    application: undefined,
+  });
   expect(JSON.parse(target.body).operation).toBe("credentials.revoke");
 });
 
@@ -77,4 +80,20 @@ test("maps route errors to logged API responses", async () => {
   expect(target.status).toBe(500);
   expect(JSON.parse(target.body).error).toBe("status failed");
   expect(log.error).toHaveBeenCalledTimes(1);
+});
+
+test("passes scoped-token identity to internal observation routes", async () => {
+  const managed = {
+    authenticate: jest.fn().mockResolvedValue({
+      identity: "node.example.test",
+      scopes: ["cluster:read"],
+    }),
+  };
+  const { handler } = createApi({ managed, observations: [] });
+  const target = createApiResponse();
+  await handler(
+    createApiRequest("GET", "/api/v1/cluster/observations", { token: "scoped" }),
+    target,
+  );
+  expect(target.status).toBe(200);
 });

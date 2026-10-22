@@ -1,10 +1,10 @@
 import { transitionRecoveryEpoch } from "../recovery/epoch.mjs";
 
 export async function completeRecoveryEpoch(
-  { epoch, winner, clusterId, membership } = {},
-  { read, persist, now, publishEvent, debug, setCurrent },
+  { epoch, winner, clusterId } = {},
+  { read, persist, now, publishEvent, debug, setCurrent, verifyMembership },
 ) {
-  debug("Completing recovery epoch", { epoch, winner, clusterId, membership });
+  debug("Completing recovery epoch", { epoch, winner, clusterId });
   const existing = await read();
   if (!existing || existing.epoch !== epoch)
     throw Object.assign(new Error("unknown or stale recovery epoch"), { statusCode: 409 });
@@ -12,6 +12,11 @@ export async function completeRecoveryEpoch(
     throw Object.assign(new Error("recovery end authority does not match the approved epoch"), {
       statusCode: 409,
     });
+  if (typeof verifyMembership !== "function")
+    throw Object.assign(new Error("live recovery membership verification is required"), {
+      statusCode: 409,
+    });
+  const membership = await verifyMembership(existing);
   if (!Array.isArray(membership) || membership.length !== existing.quorum.length)
     throw Object.assign(new Error("recovery end membership does not match the approved quorum"), {
       statusCode: 409,

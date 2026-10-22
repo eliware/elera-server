@@ -21,7 +21,8 @@ export function watchMariaDbBootstrapReadiness({
       result.values?.wsrep_local_state_comment === "Synced" &&
       result.values?.wsrep_ready === "ON" &&
       result.values?.wsrep_cluster_status === "Primary" &&
-      Number(result.values?.wsrep_cluster_size) === 1,
+      Number(result.values?.wsrep_cluster_size) ===
+        (startupDecision.recoveryEpoch?.quorum?.length ?? 1),
     onTimeout: async () => {
       if (!isCurrent()) return;
       recoveryState.set("cluster-unavailable", {
@@ -49,7 +50,6 @@ export function watchMariaDbBootstrapReadiness({
           epoch: startupDecision.epoch,
           clusterId: startupDecision.recoveryEpoch.clusterId,
           winner: identity.name,
-          membership: startupDecision.recoveryEpoch.quorum,
         });
       if (!isCurrent()) return;
       recoveryState.set("complete", {

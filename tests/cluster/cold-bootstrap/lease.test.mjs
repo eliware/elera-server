@@ -67,7 +67,7 @@ test("propagates unexpected lease storage failures", async () => {
   });
 });
 
-test("fences an expired competing lease", async () => {
+test("fails closed for an expired competing lease", async () => {
   const directory = await mkdtemp(join(tmpdir(), "elera-lease-"));
   const path = join(directory, "lease.json");
   await writeFile(
@@ -76,8 +76,8 @@ test("fences an expired competing lease", async () => {
   );
   const lease = createRecoveryLease(path, { staleAfterMs: 100, now: () => 1000 });
   await expect(lease.claim({ epoch: "new", winner: "new.example.test" })).resolves.toMatchObject({
-    granted: true,
-    epoch: "new",
+    granted: false,
+    reason: "stale recovery lease requires operator cleanup",
   });
   await rm(directory, { recursive: true, force: true });
 });

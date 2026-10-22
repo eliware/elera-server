@@ -29,12 +29,20 @@ export async function handleManagedAccessRoute({ method, path, request, response
     return true;
   }
   if (method === "POST" && path === "/api/v1/identities/revoke") {
-    if (!allowed(auth, "identity:revoke")) return false;
     const body = await readBody(request);
+    const application = body.application ?? auth?.application;
+    if (
+      !allowed(auth, "identity:revoke", application) ||
+      (auth?.application && auth.application !== application)
+    )
+      return false;
     response.json(200, {
       ok: true,
       operation: "identity.revoke",
-      data: await managed.revokeIdentity(body.identity),
+      data: await managed.revokeIdentity({
+        identity: body.identity,
+        application,
+      }),
     });
     return true;
   }

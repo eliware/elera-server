@@ -9,6 +9,7 @@ test("SQL literals and identifiers escape credentials without exposing shell arg
   expect(sqlLiteral("a'b\\c")).toBe("'a''b\\\\c'");
   expect(sqlIdentifier("a`b")).toBe("`a``b`");
   const sql = initializationSql({ database: "app" });
-  expect(sql).toContain("CREATE DATABASE IF NOT EXISTS `app`");
+  expect(sql).toBe("CREATE DATABASE IF NOT EXISTS `app`;\nFLUSH PRIVILEGES;\n");
+  expect(sql).not.toMatch(/\b(?:DATABASE `app`|PRIVILEGES)\.\s/);
   expect(sql).not.toContain("IDENTIFIED BY");
 });

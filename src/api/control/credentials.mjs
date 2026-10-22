@@ -3,7 +3,7 @@ import { validateCredentialLeaseRequest } from "../../routing-policy.mjs";
 import { readBody } from "../http.mjs";
 
 export async function handleControlCredentialRoute(
-  { method, url, request, response, environment },
+  { method, url, request, response, environment, auth },
   {
     leaseCredentials,
     managed,
@@ -37,18 +37,26 @@ export async function handleControlCredentialRoute(
     method === "POST" &&
     ["/api/v1/credentials/refresh", "/api/v1/credentials/revoke"].includes(url.pathname)
   )
-    return manageLease({ request, response, managed, url, read, bundle, environment });
+    return manageLease({ request, response, managed, url, read, bundle, environment, auth });
   return false;
 }
 
-async function manageLease({ request, response, managed, url, read, bundle, environment }) {
+async function manageLease({ request, response, managed, url, read, bundle, environment, auth }) {
   const body = await read(request);
   if (typeof managed?.lease !== "function") {
     response.json(501, { ok: false, error: "credential management is not configured" });
     return true;
   }
   if (url.pathname.endsWith("/revoke")) {
-    const result = await managed.revokeIdentity(body.identity);
+    const application = body.application ?? auth?.application;
+    if (auth?.application && auth.application !== application) {
+      response.json(403, { ok: false, error: "identity belongs to another application" });
+      return true;
+    }
+    const result = await managed.revokeIdentity({
+      identity: body.identity,
+      application,
+    });
     response.json(200, { ok: true, operation: "credentials.revoke", data: result });
     return true;
   }

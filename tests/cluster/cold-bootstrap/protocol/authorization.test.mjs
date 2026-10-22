@@ -83,14 +83,28 @@ const makeProtocol = () => {
 
 test("publishes lifecycle events for evidence, candidate, authorization, bootstrap, and completion", async () => {
   const events = [];
+  let ready = false;
+  const observed = (node, seqno) => ({
+    ...recoveryEvidence(node, seqno),
+    active: ready,
+    galera: ready
+      ? {
+          clusterUuid: "cluster",
+          clusterStatus: "Primary",
+          localState: "Synced",
+          ready: "ON",
+          clusterSize: 3,
+        }
+      : undefined,
+  });
   const eventProtocol = createColdRecoveryProtocol({
     nodes: [
       { name: "a.example.test", local: true },
       { name: "b.example.test", url: "http://b.example.test" },
       { name: "c.example.test", url: "http://c.example.test" },
     ],
-    localEvidence: async () => recoveryEvidence("a.example.test", 3),
-    fetchEvidence: async (url) => recoveryEvidence(new URL(url).hostname, 2),
+    localEvidence: async () => observed("a.example.test", 3),
+    fetchEvidence: async (url) => observed(new URL(url).hostname, 2),
     store: {
       value: undefined,
       async read() {
@@ -108,6 +122,7 @@ test("publishes lifecycle events for evidence, candidate, authorization, bootstr
     acknowledgements: ["a.example.test", "b.example.test", "c.example.test"],
   });
   await eventProtocol.beginBootstrap({ epoch: plan.epoch, winner: "a.example.test" });
+  ready = true;
   await eventProtocol.complete({
     epoch: plan.epoch,
     winner: "a.example.test",
@@ -146,17 +161,22 @@ test("requires the exact epoch and quorum before authorization", async () => {
   });
 });
 
-test("allows an explicit forced authorization to bypass peer acknowledgements", async () => {
+test("requires the full configured acknowledgements for forced authorization", async () => {
   const { protocol } = makeProtocol();
   const plan = await protocol.plan();
-  await expect(protocol.authorize({ epoch: plan.epoch, force: true })).resolves.toMatchObject({
-    phase: "authorized",
-    operatorForced: true,
-    acknowledgements: new Set(["a.example.test", "b.example.test", "c.example.test"]),
-  });
+  await expect(protocol.authorize({ epoch: plan.epoch, force: true })).rejects.toThrow(
+    "full-cluster authorization",
+  );
+  await expect(
+    protocol.authorize({
+      epoch: plan.epoch,
+      force: true,
+      acknowledgements: ["a.example.test", "b.example.test", "c.example.test"],
+    }),
+  ).resolves.toMatchObject({ phase: "authorized", operatorForced: true });
 });
 
-test("allows a root-mediated temporary two-supervisor quorum", async () => {
+test("rejects a reduced quorum even for forced authorization", async () => {
   const { protocol } = makeProtocol();
   const plan = await protocol.plan();
   await expect(
@@ -166,12 +186,7 @@ test("allows a root-mediated temporary two-supervisor quorum", async () => {
       supervisorQuorum: 2,
       acknowledgements: ["a.example.test", "b.example.test"],
     }),
-  ).resolves.toMatchObject({
-    phase: "authorized",
-    operatorForced: true,
-    requiredAcknowledgements: 2,
-    acknowledgements: new Set(["a.example.test", "b.example.test"]),
-  });
+  ).rejects.toMatchObject({ statusCode: 400 });
 });
 
 test("rejects an invalid temporary supervisor quorum", async () => {

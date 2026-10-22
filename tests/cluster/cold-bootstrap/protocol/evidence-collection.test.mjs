@@ -193,8 +193,9 @@ test("selects a winner from a validated majority when one peer is unavailable", 
     },
   });
   await expect(protocol.plan()).resolves.toMatchObject({
-    eligible: false,
-    mode: "blocked",
-    code: "INSUFFICIENT_RECOVERY_EVIDENCE",
+    eligible: true,
+    mode: "bootstrap",
+    winner: { node: "a.example.test" },
+    quorum: ["a.example.test", "b.example.test", "c.example.test"],
   });
 });

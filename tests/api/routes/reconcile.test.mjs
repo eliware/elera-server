@@ -1,6 +1,7 @@
 import { expect, jest, test } from "@jest/globals";
 import { handleReconcileRoute } from "../../../src/api/routes/reconcile.mjs";
-const request = (body) => ({
+const request = (body, headers = { "idempotency-key": "test-key" }) => ({
+  headers,
   async *[Symbol.asyncIterator]() {
     yield JSON.stringify(body);
   },
@@ -8,7 +9,7 @@ const request = (body) => ({
 const make = (method, path, body = {}) => ({
   method,
   path,
-  request: request(body),
+  request: request({ confirm: true, ...body }),
   response: { json: jest.fn() },
   auth: { scopes: ["metadata:reconcile"] },
   reconciler: {
@@ -101,6 +102,17 @@ test("returns unavailable for failed account restore verification and null paylo
         }),
       ),
     ).toBe(true);
+});
+test("requires an idempotency key for restore mutations", async () => {
+  const context = make("POST", "/api/v1/restores/accounts/apply", { confirm: true });
+  context.request.headers = {};
+  await expect(handleReconcileRoute(context)).rejects.toMatchObject({ statusCode: 400 });
+});
+
+test("requires explicit confirmation before restore apply", async () => {
+  const context = make("POST", "/api/v1/restores/accounts/apply", { confirm: false });
+  await expect(handleReconcileRoute(context)).rejects.toMatchObject({ statusCode: 409 });
+  expect(context.reconciler.apply).not.toHaveBeenCalled();
 });
 test("covers null desired and nested account defaults", async () => {
   for (const path of [

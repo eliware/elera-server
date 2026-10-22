@@ -31,14 +31,15 @@ export async function handlePendingRecoveryJoinRoute({
           statusCode: 409,
         },
       );
-    if (!members.some((member) => member?.name === body.node))
+    const target = members.find((member) => member?.name === body.node);
+    if (!target)
       throw Object.assign(
         new Error(`recovery join target ${body.node} is not a configured cluster member`),
         {
           statusCode: 400,
         },
       );
-    const data = await onJoin(body);
+    const data = await onJoin({ ...body, winnerAddress: target.address });
     json(response, 202, { ok: true, operation: "cluster.cold-recovery.join", data });
   } catch (error) {
     json(response, error.statusCode ?? (body ? 409 : 400), {

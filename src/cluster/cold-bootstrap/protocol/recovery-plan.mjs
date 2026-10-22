@@ -47,18 +47,17 @@ export function createRecoveryPlanner({
           : {}),
         evidence,
       };
-    if (evidence.length < nodes.length) {
-      const failedReason = "recovery data is incomplete";
-      const reason = `${failedReason}: all configured supervisors must provide recovery data before bootstrap`;
-      const mismatch = failures.find(
-        (failure) => failure?.code === "RECOVERY_EVIDENCE_IDENTITY_MISMATCH",
-      );
+    const requiredEvidence = Math.floor(nodes.length / 2) + 1;
+    const mismatch = failures.find(
+      (failure) => failure?.code === "RECOVERY_EVIDENCE_IDENTITY_MISMATCH",
+    );
+    if (evidence.length < requiredEvidence || mismatch) {
+      const reason = mismatch?.message ?? "recovery data does not contain a validated majority";
       return blocked({
-        reason: mismatch ? mismatch.message : reason,
+        reason,
         code: mismatch?.code ?? "INSUFFICIENT_RECOVERY_EVIDENCE",
         evidence,
         failures,
-        eventReason: reason,
       });
     }
     return createCandidateRecoveryPlan({

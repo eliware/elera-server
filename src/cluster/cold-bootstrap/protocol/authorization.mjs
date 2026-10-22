@@ -9,20 +9,18 @@ export async function authorizeRecoveryEpoch(
   const existing = await read();
   if (!existing || existing.epoch !== epoch || !validateRecoveryEpoch(existing, existing.clusterId))
     throw Object.assign(new Error("unknown or stale recovery epoch"), { statusCode: 409 });
-  const requestedQuorum = supervisorQuorum ?? existing.quorum.length;
+  const requestedQuorum = existing.quorum.length;
   if (
+    (supervisorQuorum !== undefined && supervisorQuorum !== requestedQuorum) ||
     !Number.isInteger(requestedQuorum) ||
-    requestedQuorum < 1 ||
-    requestedQuorum > existing.quorum.length
+    requestedQuorum < 1
   )
-    throw Object.assign(
-      new Error("supervisor quorum must be between one and the configured member count"),
-      { statusCode: 400 },
-    );
-  const acknowledgementsBy =
-    force && supervisorQuorum === undefined
-      ? existing.quorum.slice()
-      : [...new Set(Array.isArray(acknowledgements) ? acknowledgements : [])].sort();
+    throw Object.assign(new Error("supervisor quorum must match the configured member count"), {
+      statusCode: 400,
+    });
+  const acknowledgementsBy = [
+    ...new Set(Array.isArray(acknowledgements) ? acknowledgements : []),
+  ].sort();
   const current = transitionRecoveryEpoch(existing, "authorized", {
     acknowledgements: acknowledgementsBy,
     acknowledgementsBy,

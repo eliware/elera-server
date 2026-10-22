@@ -46,7 +46,7 @@ start again. Unsafe bootstrap changes require explicit confirmation.
 
 - [x] `GET /api/v1/status` — redacted local process and database status.
 - [ ] `GET /api/v1/version` — supervisor, MariaDB, and provider versions.
-- [ ] `GET /api/v1/config` — active non-secret configuration.
+- [x] `GET /api/v1/config` — active non-secret configuration.
 - [ ] `GET /api/v1/diagnostics` — redacted support and automation snapshot.
 - [ ] `GET /api/v1/metrics` — optional Prometheus metrics.
 
@@ -55,9 +55,9 @@ start again. Unsafe bootstrap changes require explicit confirmation.
 - [x] `GET /api/v1/cluster/status` — local and currently observed cluster state.
 - [ ] `GET /api/v1/cluster/writer-assignments` — current per-application writer assignments.
 - [x] `GET /api/v1/cluster/topology` — current observations and quorum decision.
-- [ ] `GET /api/v1/internal/health` — authenticated supervisor health observation.
-- [ ] `GET /api/v1/internal/topology` — authenticated supervisor topology replace.
-- [ ] `POST /api/v1/internal/observations` — publish a signed or authenticated observation.
+- [x] `GET /api/v1/cluster/observations` — inspect authenticated cluster observations. Requires `cluster:read`.
+- [x] `GET /api/v1/cluster/quorum` — inspect the authenticated cluster quorum. Requires `cluster:read`.
+- [x] `POST /api/v1/cluster/observations` — publish an authenticated peer observation.
 
 Observations must expire. A stale observation cannot keep a node eligible.
 
@@ -98,7 +98,7 @@ Observations must expire. A stale observation cannot keep a node eligible.
 - [x] `POST /api/v1/routes/refresh` — explicitly recalculate a routing bundle.
 - [x] `GET /api/v1/routing/bundle` — return the complete credential and routing snapshot.
 - [x] `GET /api/v1/routing/stream` — upgrade to the authenticated routing WebSocket.
-- [x] `GET /api/v1/routing/resync` — return a current snapshot after reconnect.
+- [x] `POST /api/v1/routing/resync` — return a current snapshot after reconnect.
 - [x] `GET /api/v1/routing/validate` — validate the authenticated application's current bundle and eligible route set.
 - [x] `GET /api/v1/routing/events` — inspect the latest in-memory routing event for an application.
 - [x] `POST /api/v1/routing/rebalance` — explicitly invalidate and recalculate one application's assignment. Requires `routing:rebalance` and `confirm: true`.

@@ -78,12 +78,20 @@ export async function handleManagedRoute({ method, path, request, response, mana
     return true;
   }
   if (method === "POST" && path === "/api/v1/identities/rotate") {
-    if (!allowed(auth, "identity:rotate")) return false;
     const body = await readBody(request);
+    const application = body.application ?? auth?.application;
+    if (
+      !allowed(auth, "identity:rotate", application) ||
+      (auth?.application && auth.application !== application)
+    )
+      return false;
     send(response, 200, {
       ok: true,
       operation: "identity.rotate",
-      data: await managed.rotateIdentity(body.identity),
+      data: await managed.rotateIdentity({
+        identity: body.identity,
+        application,
+      }),
     });
     return true;
   }

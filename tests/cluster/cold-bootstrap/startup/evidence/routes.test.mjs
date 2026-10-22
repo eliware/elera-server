@@ -20,6 +20,10 @@ test("validates route dependencies", () =>
   expect(() => createStartupEvidenceRoutes()).toThrow(
     "startup proof route dependencies are required",
   ));
+test("requires a peer token before exposing evidence routes", () =>
+  expect(() => createStartupEvidenceRoutes({ evidence: async () => ({}) })).toThrow(
+    "startup evidence token is required",
+  ));
 test("handles evidence authentication and success", async () => {
   const handler = createStartupEvidenceRoutes({
     token: "secret",
@@ -39,7 +43,7 @@ test("handles evidence authentication and success", async () => {
 });
 test("returns false for unrelated routes", async () =>
   expect(
-    createStartupEvidenceRoutes({ evidence: async () => ({}) })(
+    createStartupEvidenceRoutes({ evidence: async () => ({}), token: "secret" })(
       request("GET", "/other"),
       response(),
     ),
