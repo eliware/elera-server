@@ -23,6 +23,7 @@
 - Verify each recovery join before reporting success.
 - Keep recovery APIs available during blocked startup and remove drain state after recovery.
 - Retry recovery planning after peer startup failures and prevent stale timeouts from hiding readiness.
+- Check join epochs when recovery snapshots are missing.
 
 ### Breaking changes
 
