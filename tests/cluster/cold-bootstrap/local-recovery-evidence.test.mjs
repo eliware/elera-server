@@ -82,6 +82,28 @@ test("does not run wsrep recovery for an active peer with an unknown saved seque
   }
 });
 
+test("keeps a saved sequence when both health checks fail", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "elera-evidence-"));
+  try {
+    await writeFile(join(dir, "grastate.dat"), "uuid: abc\nseqno: 12\nsafe_to_bootstrap: 1\n");
+    const evidence = createLocalRecoveryEvidence({
+      localNode: { name: "one.example.test" },
+      dataDir: dir,
+      health: {
+        status: async () => {
+          throw new Error("health unavailable");
+        },
+      },
+    });
+    await expect(evidence()).resolves.toMatchObject({
+      state: { savedSeqno: 12, recoveredSeqno: undefined },
+      active: false,
+    });
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("does not rerun a failed wsrep recovery probe for every live evidence request", async () => {
   const dir = await mkdtemp(join(tmpdir(), "elera-evidence-"));
   try {

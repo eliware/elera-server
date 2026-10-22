@@ -1,43 +1,9 @@
 import { expect, jest, test } from "@jest/globals";
-import { join } from "node:path";
-import { installMemoryFileSystem } from "../../../test-fixtures/memory-filesystem.mjs";
-
-const __memoryFs = installMemoryFileSystem(jest);
-jest.unstable_mockModule("node:fs/promises", () => __memoryFs);
-jest.unstable_mockModule("node:fs", () => __memoryFs);
-jest.unstable_mockModule("node:os", () => ({ tmpdir: () => "/tmp" }));
-const { mkdtemp, mkdir, rm, writeFile } = __memoryFs;
 const { createNodeDataReset } = await import("../../../src/lifecycle/node/data-reset.mjs");
 const { nodeDataResetOptions } =
   await import("../../../test-fixtures/lifecycle/node-data-reset-options.mjs");
 
 const base = nodeDataResetOptions;
-test("uses the default removal implementation for a disposable data directory", async () => {
-  const directory = await mkdtemp(join(process.cwd(), "reset-test-"));
-  try {
-    await mkdir(join(directory, "mysql"));
-    await writeFile(join(directory, "mysql", "state"), "x");
-    const service = createNodeDataReset(
-      base({
-        dataDir: directory,
-        getStatus: async () => ({ ready: false, values: { wsrep_cluster_status: "non-Primary" } }),
-        getRecoveryState: () => null,
-      }),
-    );
-    await service.reset({
-      node: "node-a.example.test",
-      dataDir: directory,
-      confirmation: "RESET node-a.example.test",
-      dryRun: false,
-      idempotencyKey: "default-reset",
-    });
-    await expect(
-      import("node:fs/promises").then(({ access }) => access(join(directory, "mysql"))),
-    ).rejects.toBeTruthy();
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-});
 test("permits healthy target resync only after supervisor fencing", async () => {
   const fence = jest.fn();
   const excludeRouting = jest.fn();

@@ -1,83 +1,16 @@
-import { jest, expect, test } from "@jest/globals";
-import { join } from "node:path";
-import { installMemoryFileSystem } from "../../../test-fixtures/memory-filesystem.mjs";
+import { expect, test } from "@jest/globals";
+import { createColdBootstrapEvidence } from "../../../src/cluster/cold-bootstrap/peer-evidence.mjs";
 
-const __memoryFs = installMemoryFileSystem(jest);
-jest.unstable_mockModule("node:fs/promises", () => __memoryFs);
-jest.unstable_mockModule("node:fs", () => __memoryFs);
-jest.unstable_mockModule("node:os", () => ({ tmpdir: () => "/tmp" }));
-const { mkdtemp, rm, writeFile } = __memoryFs;
-const tmpdir = () => "/tmp";
-const { createColdBootstrapEvidence } =
-  await import("../../../src/cluster/cold-bootstrap/peer-evidence.mjs");
+const createEvidence = (fetchImpl) =>
+  createColdBootstrapEvidence({
+    localNode: { name: "one.example.test" },
+    dataDir: "/tmp",
+    health: {},
+    fetchImpl,
+    token: "token",
+  });
 
-test("collects local state, recovers unknown sequence numbers, and reports health", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "elera-evidence-"));
-  try {
-    await writeFile(join(dir, "grastate.dat"), "uuid: abc\nseqno: -1\nsafe_to_bootstrap: 0\n");
-    let calls = 0;
-    const evidence = createColdBootstrapEvidence({
-      localNode: { name: "one.example.test" },
-      dataDir: dir,
-      health: {
-        status: async () => ({ ready: false, values: { wsrep_cluster_status: "Non-Primary" } }),
-      },
-      run: async () => {
-        calls += 1;
-        return "WSREP: Recovered position: abc:12";
-      },
-    });
-    await expect(evidence.local()).resolves.toMatchObject({
-      node: "one.example.test",
-      active: false,
-      state: { recoveredSeqno: 12 },
-      generation: 1,
-    });
-    await expect(evidence.local()).resolves.toMatchObject({
-      node: "one.example.test",
-      active: false,
-      state: { recoveredSeqno: 12 },
-      generation: 2,
-    });
-    expect(calls).toBe(1);
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
-});
-
-test("does not run wsrep recovery for an active peer with an unknown saved sequence", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "elera-evidence-"));
-  try {
-    await writeFile(join(dir, "grastate.dat"), "uuid: abc\nseqno: -1\nsafe_to_bootstrap: 0\n");
-    const run = async () => {
-      throw new Error("must not recover an active peer");
-    };
-    const evidence = createColdBootstrapEvidence({
-      localNode: { name: "one.example.test" },
-      dataDir: dir,
-      health: {
-        status: async () => ({
-          ready: true,
-          values: {
-            wsrep_local_state_comment: "Synced",
-            wsrep_cluster_status: "Primary",
-            wsrep_ready: "ON",
-          },
-        }),
-      },
-      run,
-    });
-    await expect(evidence.local()).resolves.toMatchObject({
-      node: "one.example.test",
-      active: true,
-      state: { savedSeqno: -1, recoveredSeqno: undefined },
-    });
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
-});
-
-test("forwards authenticated remote evidence and validates dependencies", async () => {
+test("forwards authenticated remote evidence and validates facade dependencies", async () => {
   const fetchImpl = async (url, options) => {
     expect(url).toBe("http://peer.example.test/api/v1/cluster/cold-bootstrap/evidence");
     expect(options.headers.authorization).toBe("Bearer token");
@@ -88,83 +21,40 @@ test("forwards authenticated remote evidence and validates dependencies", async 
       },
     };
   };
-  const evidence = createColdBootstrapEvidence({
-    localNode: { name: "one.example.test" },
-    dataDir: "/tmp",
-    health: {},
-    fetchImpl,
-    token: "token",
-  });
+  const evidence = createEvidence(fetchImpl);
   await expect(evidence.remote("http://peer.example.test/")).resolves.toEqual({
     node: "peer.example.test",
   });
   await expect(evidence.remote("http://peer.example.test")).resolves.toEqual({
     node: "peer.example.test",
   });
+  expect(evidence).toEqual({ local: expect.any(Function), remote: expect.any(Function) });
   expect(() => createColdBootstrapEvidence()).toThrow("cold bootstrap local data");
 });
 
-test("rejects authenticated evidence attributed to another node", async () => {
-  const evidence = createColdBootstrapEvidence({
-    localNode: { name: "one.example.test" },
-    dataDir: "/tmp",
-    health: {},
-    token: "token",
-    fetchImpl: async () => ({
-      ok: true,
-      async json() {
-        return { data: { node: "other.example.test" } };
-      },
-    }),
-  });
-  await expect(evidence.remote("http://peer.example.test", "peer")).rejects.toMatchObject({
+test("rejects remote identity mismatches and malformed evidence", async () => {
+  const mismatch = createEvidence(async () => ({
+    ok: true,
+    async json() {
+      return { data: { node: "other.example.test" } };
+    },
+  }));
+  await expect(mismatch.remote("http://peer.example.test", "peer")).rejects.toMatchObject({
     code: "RECOVERY_EVIDENCE_IDENTITY_MISMATCH",
   });
-});
-test("rejects malformed remote evidence at the protocol boundary", async () => {
-  const evidence = createColdBootstrapEvidence({
-    localNode: { name: "one.example.test" },
-    dataDir: "/tmp",
-    health: {},
-    token: "token",
-    fetchImpl: async () => ({
-      ok: true,
-      async json() {
-        return { data: null };
-      },
-    }),
-  });
-  await expect(evidence.remote("http://peer.example.test")).rejects.toMatchObject({
+
+  const malformed = createEvidence(async () => ({
+    ok: true,
+    async json() {
+      return { data: null };
+    },
+  }));
+  await expect(malformed.remote("http://peer.example.test")).rejects.toMatchObject({
     code: "INVALID_RECOVERY_EVIDENCE",
   });
 });
 
-test("handles recovered state, health failures, and rejected peers", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "elera-evidence-"));
-  try {
-    await writeFile(join(dir, "grastate.dat"), "uuid: abc\nseqno: 12\nsafe_to_bootstrap: 1\n");
-    const evidence = createColdBootstrapEvidence({
-      localNode: { name: "one.example.test" },
-      dataDir: dir,
-      health: {
-        status: async () => {
-          throw new Error("down");
-        },
-      },
-    });
-    await expect(evidence.local()).resolves.toMatchObject({
-      state: { savedSeqno: 12, recoveredSeqno: undefined },
-      active: false,
-    });
-    const rejected = createColdBootstrapEvidence({
-      localNode: { name: "one.example.test" },
-      dataDir: dir,
-      health: {},
-      fetchImpl: async () => ({ ok: false, status: 503 }),
-      token: "token",
-    });
-    await expect(rejected.remote("http://peer.example.test")).rejects.toThrow("Status=503");
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
+test("reports failed remote responses", async () => {
+  const evidence = createEvidence(async () => ({ ok: false, status: 503 }));
+  await expect(evidence.remote("http://peer.example.test")).rejects.toThrow("Status=503");
 });

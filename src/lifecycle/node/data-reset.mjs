@@ -1,8 +1,8 @@
-import { readdir, rm } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { isSyncedPrimary, waitForReady } from "./reset/readiness.mjs";
 import { selectRecoveryDonor } from "./reset/donors.mjs";
 import { validateNodeDataReset } from "./reset/validation.mjs";
+import { removeNodeDataDirectory } from "./reset/directory-removal.mjs";
 
 const failure = (message, statusCode = 409) => Object.assign(new Error(message), { statusCode });
 
@@ -19,10 +19,7 @@ export function createNodeDataReset({
   isRoutingExcluded = async () => true,
   stop = async () => {},
   restart = async () => {},
-  remove = async (directory) => {
-    for (const entry of await readdir(directory))
-      await rm(join(directory, entry), { recursive: true, force: true });
-  },
+  remove = removeNodeDataDirectory,
   waitForRejoin = waitForReady,
   reinclude = async () => {},
   resyncTimeoutMs = 120000,
