@@ -55,6 +55,57 @@ test("does not recover while the local database process is active", async () => 
   });
 });
 
+test("includes Galera status for an active startup peer", async () => {
+  const evidence = createStartupLocalEvidence({
+    node: { name: nodeName },
+    dataDir: "x",
+    readState: async () => ({ uuid: "c", seqno: 7, safeToBootstrap: false }),
+    runRecover: async () => "Recovered position: c:42",
+    health: {
+      status: async () => ({
+        ready: true,
+        values: {
+          wsrep_cluster_state_uuid: "cluster-id",
+          wsrep_cluster_status: "Primary",
+          wsrep_local_state_comment: "Synced",
+          wsrep_ready: "ON",
+          wsrep_cluster_size: "3",
+        },
+      }),
+    },
+    isActive: () => true,
+  });
+  await expect(evidence()).resolves.toMatchObject({
+    node: nodeName,
+    active: true,
+    galera: {
+      clusterUuid: "cluster-id",
+      clusterStatus: "Primary",
+      localState: "Synced",
+      ready: "ON",
+      clusterSize: 3,
+    },
+  });
+});
+
+test("keeps active evidence when the health status read fails", async () => {
+  const evidence = createStartupLocalEvidence({
+    node: { name: nodeName },
+    dataDir: "x",
+    readState: async () => ({ uuid: "c", seqno: 7, safeToBootstrap: false }),
+    runRecover: async () => "Recovered position: c:42",
+    health: {
+      status: async () => {
+        throw new Error("health unavailable");
+      },
+    },
+    isActive: () => true,
+  });
+  const result = await evidence();
+  expect(result).toMatchObject({ node: nodeName, active: true });
+  expect(result).not.toHaveProperty("galera");
+});
+
 test("includes protocol freshness metadata and preserves both sequence numbers", async () => {
   const evidence = createStartupLocalEvidence({
     node: { name: nodeName },

@@ -10,6 +10,7 @@ export function createStartupLocalEvidence({
   dataDir,
   readState,
   runRecover,
+  health,
   isActive = () => false,
   inspect = () => ({ action: "start", reason: "state-readable" }),
 } = {}) {
@@ -31,12 +32,25 @@ export function createStartupLocalEvidence({
     const directory = inspect(dataDir);
     const observedAt = new Date().toISOString();
     const active = isActive();
+    const status = health?.status ? await health.status().catch(() => undefined) : undefined;
+    const values = status?.values ?? {};
+    const galera = status
+      ? {
+          clusterUuid: values.wsrep_cluster_state_uuid,
+          clusterStatus: values.wsrep_cluster_status,
+          localState: values.wsrep_local_state_comment,
+          ready: values.wsrep_ready,
+          clusterSize: Number(values.wsrep_cluster_size),
+        }
+      : undefined;
+    const metadata = galera ? { galera } : {};
     if (state.seqno >= 0 || active)
       return {
         node: node.name,
         state: { ...state, savedSeqno: state.seqno, recoveredSeqno: undefined },
         dataDirectory: { valid: directory.action === "start", reason: directory.reason },
         active,
+        ...metadata,
         generation,
         observedAt,
       };
@@ -61,6 +75,7 @@ export function createStartupLocalEvidence({
       state: { ...state, ...recovered, savedSeqno: state.seqno, recoveredSeqno: recovered.seqno },
       dataDirectory: { valid: directory.action === "start", reason: directory.reason },
       active: false,
+      ...metadata,
       generation,
       observedAt,
     };

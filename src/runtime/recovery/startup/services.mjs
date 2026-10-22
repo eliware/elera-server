@@ -66,6 +66,7 @@ export async function prepareRecoveryStartupServices({
       identity,
       dataDir: config.dataDir,
       httpPort: config.httpPort,
+      health,
       token: environment.ELERA_PEER_TOKEN ?? environment.ROOT_TOKEN,
       mariaProcess,
       getMariaProcess,

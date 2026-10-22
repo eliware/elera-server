@@ -11,6 +11,7 @@ export function createRecoveryEvidenceService({
   identity,
   dataDir,
   httpPort,
+  health,
   token,
   mariaProcess,
   getMariaProcess = () => mariaProcess?.mariaProcess ?? mariaProcess,
@@ -27,6 +28,7 @@ export function createRecoveryEvidenceService({
   const evidence = createEvidence({
     node: identity,
     dataDir,
+    health,
     readState: (directory) => readState(directory),
     runRecover: recover,
     inspect,
