@@ -50,6 +50,7 @@ export async function prepareSupervisorStartup(options) {
     identity,
     routingEnvironment,
     config,
+    log,
     environment,
   });
   log.debug?.("Startup phase: recovery setup complete", {

@@ -107,7 +107,8 @@ test("uses the default DNS resolver for a multi-member intent", async () => {
   ).resolves.toMatchObject({ args: [] });
 });
 
-test("reports member hostname resolution failures", async () => {
+test("allows unresolved peers while preserving startup", async () => {
+  const warn = jest.fn();
   const intent = {
     cluster: {
       members: [
@@ -116,6 +117,31 @@ test("reports member hostname resolution failures", async () => {
       ],
     },
   };
+  const intentState = { paths: {}, apply: jest.fn() };
+  await expect(
+    loadSupervisorStartupConfiguration({
+      intentState,
+      loadEnvironmentIntent: jest.fn(),
+      identity: { name: "node-a.example.test" },
+      routingEnvironment: {},
+      config: {},
+      log: { warn },
+      loadIntentImpl: jest.fn(async () => intent),
+      mariaArguments: jest.fn(() => []),
+      resolveAddress: jest.fn(async (host) => {
+        if (host === "bad.example.test") throw new Error("lookup failed");
+        return [];
+      }),
+    }),
+  ).resolves.toMatchObject({ args: [] });
+  expect(warn).toHaveBeenCalledWith("Configured cluster peer is not resolvable during startup", {
+    member: "node-b.example.test",
+    address: "bad.example.test",
+  });
+  expect(intentState.apply).toHaveBeenCalledWith(intent);
+});
+
+test("rejects runtime identity hostname resolution failures", async () => {
   await expect(
     loadSupervisorStartupConfiguration({
       intentState: { paths: {}, apply: jest.fn() },
@@ -123,10 +149,17 @@ test("reports member hostname resolution failures", async () => {
       identity: { name: "node-a.example.test" },
       routingEnvironment: {},
       config: {},
-      loadIntentImpl: jest.fn(async () => intent),
+      loadIntentImpl: jest.fn(async () => ({
+        cluster: {
+          members: [
+            { name: "node-a.example.test", address: "node-a.example.test" },
+            { name: "node-b.example.test", address: "node-b.example.test" },
+          ],
+        },
+      })),
       mariaArguments: jest.fn(),
       resolveAddress: jest.fn(async (host) => {
-        if (host === "bad.example.test") throw new Error("lookup failed");
+        if (host === "node-a.example.test") throw new Error("lookup failed");
         return [];
       }),
     }),

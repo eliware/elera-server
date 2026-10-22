@@ -9,6 +9,7 @@ export async function loadSupervisorStartupConfiguration({
   identity,
   routingEnvironment,
   config,
+  log = {},
   environment = process.env,
   loadIntentImpl = loadStartupIntent,
   mariaArguments = mariaDbArguments,
@@ -41,10 +42,15 @@ export async function loadSupervisorStartupConfiguration({
         try {
           await resolveAddress(member.address);
         } catch (error) {
-          throw new Error(
-            `configured member hostname resolution failed: runtime=${identity.name}. Member=${member.name}. Address=${member.address}. Error=${error.message}`,
-            { cause: error },
-          );
+          if (member.name === identity.name)
+            throw new Error(
+              `configured runtime hostname resolution failed: runtime=${identity.name}. Error=${error.message}`,
+              { cause: error },
+            );
+          log.warn?.("Configured cluster peer is not resolvable during startup", {
+            member: member.name,
+            address: member.address,
+          });
         }
       }),
     );
