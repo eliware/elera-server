@@ -4,7 +4,7 @@ const peerUrl = (peer) => {
     typeof peer === "string"
       ? peer
       : peer?.address
-        ? `http://${peer.address}:${peer.port ?? 8080}`
+        ? `http://${peer.address}:${peer.httpPort ?? peer.port ?? 8080}`
         : null;
   let url;
   try {

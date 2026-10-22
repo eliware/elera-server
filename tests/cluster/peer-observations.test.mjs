@@ -134,7 +134,9 @@ test("builds peer URLs from address objects and checks peer identity", async () 
   expect(urls[0]).toContain("peer.example.test:8080");
 
   const explicitPort = createPeerObservationClient({
-    peers: [{ name: "peer.example.test", address: "peer.example.test", port: 8081 }],
+    peers: [
+      { name: "peer.example.test", address: "peer.example.test", port: 3306, httpPort: 8081 },
+    ],
     store,
     fetchImpl: async (url) => {
       urls.push(url);

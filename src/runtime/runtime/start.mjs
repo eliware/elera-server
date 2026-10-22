@@ -45,9 +45,9 @@ export async function startSupervisorRuntime({
     recoveryAudit,
     identity,
   });
-  const configuredPeers = initialIntent.cluster.members.filter(
-    (member) => member.name !== identity.name,
-  );
+  const configuredPeers = initialIntent.cluster.members
+    .filter((member) => member.name !== identity.name)
+    .map((member) => ({ ...member, httpPort: config.httpPort }));
   const cycles = startSupervisorRouting({
     routingEvent,
     routingBus,
