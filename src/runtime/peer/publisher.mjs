@@ -26,21 +26,23 @@ export function createPeerPublisher({
     throw new TypeError("peer publisher cluster identity is required");
   return async function publish() {
     const current = await health.status().catch(() => ({ ready: false, values: {} }));
+    if (!current.ready) return { published: false, reason: "not-ready" };
+    const values = current.values ?? {};
     if (
-      !current.ready ||
-      current.values?.wsrep_local_state_comment !== "Synced" ||
-      current.values?.wsrep_cluster_status !== "Primary" ||
-      !["ON", true].includes(current.values?.wsrep_ready)
+      peerClient &&
+      (values.wsrep_local_state_comment !== "Synced" ||
+        values.wsrep_cluster_status !== "Primary" ||
+        !["ON", true].includes(values.wsrep_ready))
     )
       return { published: false, reason: "not-ready" };
     const observation = {
       nodeId: node.name,
       clusterId,
-      state: current.values.wsrep_local_state_comment,
-      synced: current.values?.wsrep_local_state_comment === "Synced",
-      primary: current.values.wsrep_cluster_status,
+      state: values.wsrep_local_state_comment ?? "Ready",
+      synced: values.wsrep_local_state_comment === "Synced",
+      primary: values.wsrep_cluster_status ?? "Standalone",
       health: "ok",
-      load: current.values,
+      load: values,
       drain: getDrained(),
       address: node.name,
       sqlPort: Number(environment.ELERA_NODE_SQL_PORT ?? 3306),

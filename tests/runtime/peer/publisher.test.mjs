@@ -57,9 +57,8 @@ test("publishes a local observation when no peers exist", async () => {
       status: async () => ({
         ready: true,
         values: {
-          wsrep_local_state_comment: "Synced",
-          wsrep_cluster_status: "Primary",
-          wsrep_ready: "ON",
+          wsrep_cluster_status: "Disconnected",
+          wsrep_ready: "OFF",
         },
       }),
     },
@@ -70,7 +69,13 @@ test("publishes a local observation when no peers exist", async () => {
   });
   await expect(publish()).resolves.toMatchObject({
     published: true,
-    observation: { nodeId: "single.example.test", observedAt: 123 },
+    observation: {
+      nodeId: "single.example.test",
+      state: "Ready",
+      synced: false,
+      primary: "Disconnected",
+      observedAt: 123,
+    },
   });
   expect(observation).toMatchObject({ nodeId: "single.example.test", health: "ok" });
 });
