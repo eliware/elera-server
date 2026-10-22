@@ -24,20 +24,15 @@ export function selectCandidate(states, { minimumHistorySize = 1 } = {}) {
         right.candidates.length - left.candidates.length ||
         left.uuid.localeCompare(right.uuid),
     );
-  const strongest = ranked[0];
-  const tied = ranked.filter(
-    (history) =>
-      history.highest === strongest.highest &&
-      history.candidates.length === strongest.candidates.length,
-  );
-  if (tied.length > 1)
+  if (ranked.length > 1)
     return {
       eligible: false,
       code: "SPLIT_BRAIN",
-      reason: "divergent cluster histories have equal recovery authority",
+      reason: "conflicting cluster UUID histories prevent recovery",
       candidates: states,
       histories: ranked,
     };
+  const strongest = ranked[0];
   if (strongest.candidates.length < minimumHistorySize)
     return {
       eligible: false,
@@ -58,19 +53,16 @@ export function selectCandidate(states, { minimumHistorySize = 1 } = {}) {
       reason: "equivalent highest seqno candidates. Deterministic winner selected",
       candidate,
       candidates,
-      divergent: states.filter((state) => state.uuid !== strongest.uuid),
+      divergent: [],
       histories: ranked,
     };
   }
   return {
     eligible: true,
-    reason:
-      ranked.length > 1
-        ? "unique highest seqno from strongest cluster history"
-        : "unique highest seqno",
+    reason: "unique highest seqno",
     candidate: winners[0],
     candidates,
-    divergent: states.filter((state) => state.uuid !== strongest.uuid),
+    divergent: [],
     histories: ranked,
   };
 }

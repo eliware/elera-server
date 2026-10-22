@@ -117,7 +117,7 @@ risk-acceptance decision.
 
 ### Client-facing SQL address
 
-Node identity is derived from `hostname -f` and `hostname -i` at startup. Persisted intent is the sole source of cluster topology after initialization. Cluster topology is established only through the explicit initialization workflow.
+Node identity is derived from `hostname -f` at startup. Persisted intent is the sole source of cluster topology after initialization. Cluster topology is established only through the explicit initialization workflow.
 
 ### Pending initialization
 

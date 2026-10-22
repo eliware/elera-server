@@ -30,6 +30,18 @@ export function createRecoveryEvidenceCollector({
         node.local ? localEvidence() : fetchEvidence(node.url ?? node, node.name),
       ),
     );
+    const identityMismatch = results.find(
+      (result, index) => result.status === "fulfilled" && result.value?.node !== nodes[index].name,
+    );
+    if (identityMismatch)
+      throw Object.assign(
+        new Error("recovery evidence identity does not match its configured member"),
+        {
+          code: "RECOVERY_EVIDENCE_IDENTITY_MISMATCH",
+        },
+      );
+    const failed = results.find((result) => result.status === "rejected");
+    if (failed && results.every((result) => result.status === "rejected")) throw failed.reason;
     const evidence = results
       .filter((result) => result.status === "fulfilled")
       .map(({ value: item }) => ({
@@ -41,17 +53,21 @@ export function createRecoveryEvidenceCollector({
         generation: item.generation,
         observedAt: item.observedAt,
       }));
-    if (evidence.some((item) => isActivePrimary(item, evidence))) {
-      debug("Active Primary detected. Recovery will join it", { evidence });
-      return { evidence, activePrimary: true };
-    }
-    const failed = results.find((result) => result.status === "rejected");
-    if (failed && evidence.length === 0) throw failed.reason;
     const validated = validateRecoveryEvidence(evidence, {
       now: now(),
       maxAgeMs: maxEvidenceAgeMs,
     });
-    if (failed && validated.length < Math.floor(nodes.length / 2) + 1) throw failed.reason;
+    const requiredMembers = Math.floor(nodes.length / 2) + 1;
+    if (failed && validated.length < requiredMembers) throw failed.reason;
+    const active = validated.find((item) => isActivePrimary(item, validated));
+    if (
+      active &&
+      validated.length >= requiredMembers &&
+      validated.filter((item) => item.uuid === active.galera.clusterUuid).length >= requiredMembers
+    ) {
+      debug("Active Primary detected. Recovery will join it", { evidence });
+      return { evidence: validated, activePrimary: true };
+    }
     debug("Recovery data validated", { evidence: validated, partial: Boolean(failed) });
     return {
       evidence: validated,

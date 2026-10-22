@@ -43,7 +43,7 @@ export function createManagedTokenLifecycle({ q }) {
     async authenticate(token) {
       if (!token) return null;
       const [rows] = await q(
-        `SELECT t.name, t.application_name AS application, d.name AS database, d.physical_name AS physical_database, t.identity_name AS identity, t.token_hash, t.scopes_json FROM elera_meta.scoped_tokens t LEFT JOIN elera_meta.identities i ON i.name=t.identity_name AND i.application_name=t.application_name LEFT JOIN elera_meta.managed_databases d ON d.physical_name=i.database_name AND d.application_name=i.application_name WHERE t.active=TRUE AND t.token_hash=${literal(hashToken(token))}`,
+        `SELECT t.name, t.application_name AS application, d.name AS database, d.physical_name AS physical_database, t.identity_name AS identity, t.token_hash, t.scopes_json FROM elera_meta.scoped_tokens t LEFT JOIN elera_meta.identities i ON i.name=t.identity_name AND i.application_name=t.application_name LEFT JOIN elera_meta.managed_databases d ON d.physical_name=i.database_name AND d.application_name=i.application_name WHERE t.active=TRUE AND (t.identity_name IS NULL OR i.active=TRUE) AND t.token_hash=${literal(hashToken(token))}`,
       );
       const row = rows.find((candidate) => tokenMatchesHash(token, candidate.token_hash));
       if (!row) return null;

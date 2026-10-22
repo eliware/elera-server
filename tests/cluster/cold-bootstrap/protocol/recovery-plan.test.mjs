@@ -141,7 +141,7 @@ const recoveryEvidence = (node, seqno) => ({
 
 test("joins when a peer already reports an active Primary component", async () => {
   const active = {
-    ...recoveryEvidence("b", 2),
+    ...recoveryEvidence("b.example.test", 2),
     active: true,
     galera: {
       clusterUuid: "cluster",
@@ -159,10 +159,10 @@ test("joins when a peer already reports an active Primary component", async () =
   };
   const protocol = createColdRecoveryProtocol({
     nodes: [
-      { name: "a", local: true },
-      { name: "b", url: "http://b" },
+      { name: "a.example.test", local: true },
+      { name: "b.example.test", url: "http://b.example.test" },
     ],
-    localEvidence: async () => recoveryEvidence("a", 1),
+    localEvidence: async () => recoveryEvidence("a.example.test", 1),
     fetchEvidence: async () => active,
     store,
   });

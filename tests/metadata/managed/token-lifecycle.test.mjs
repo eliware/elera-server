@@ -39,10 +39,18 @@ test("resolves scoped tokens to their application, database, identity, and scope
     identity: "web",
     scopes: ["database:read"],
   });
-  expect(authenticationSql).toContain("LEFT JOIN");
+  expect(authenticationSql).toContain("i.active=TRUE");
   expect(authenticationSql).toContain("d.name AS database");
   expect(authenticationSql).toContain("d.physical_name AS physical_database");
   expect(authenticationSql).toContain(`t.token_hash='${hash}'`);
+});
+
+test("requires an active identity when authenticating a scoped token", async () => {
+  const token = "revoked-identity-token";
+  const hash = createHash("sha256").update(token).digest("hex");
+  const managed = createManagedMetadataForTest({ query: async () => [[]] });
+  await expect(managed.authenticate(token)).resolves.toBeNull();
+  expect(hash).toHaveLength(64);
 });
 
 test("keeps app-admin tokens application-scoped without assigning a database identity", async () => {

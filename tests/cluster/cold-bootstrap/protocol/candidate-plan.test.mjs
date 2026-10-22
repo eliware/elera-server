@@ -61,7 +61,7 @@ const makeProtocol = () => {
   return { protocol, store };
 };
 
-test("selects the strongest surviving UUID history and records divergent stale nodes", async () => {
+test("blocks conflicting UUID histories", async () => {
   const stale = {
     ...recoveryEvidence("a.example.test", 47),
     state: { uuid: "old-history", seqno: 47, safeToBootstrap: true },
@@ -90,10 +90,9 @@ test("selects the strongest surviving UUID history and records divergent stale n
     },
   });
   await expect(protocol.plan()).resolves.toMatchObject({
-    eligible: true,
-    mode: "bootstrap",
-    winner: { node: "b.example.test" },
-    divergent: expect.arrayContaining([expect.objectContaining({ node: "a.example.test" })]),
+    eligible: false,
+    mode: "blocked",
+    code: "SPLIT_BRAIN",
   });
 });
 

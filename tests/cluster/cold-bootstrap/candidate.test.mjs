@@ -21,24 +21,12 @@ test("selects a deterministic winner for an equivalent same-cluster position", (
     candidate: { node: "a.example.test" },
     reason: expect.stringContaining("Deterministic"),
   }));
-test("selects the strongest UUID history and marks weaker history divergent", () =>
+test("blocks divergent UUID histories", () =>
   expect(selectCandidate([node("a", 10), { ...node("b", 12), uuid: "other" }])).toMatchObject({
-    eligible: true,
-    candidate: { node: "b.example.test" },
-    divergent: [{ node: "a.example.test" }],
+    eligible: false,
+    code: "SPLIT_BRAIN",
   }));
-test("selects the highest recovered winner and reports weaker histories", () =>
-  expect(
-    selectCandidate([
-      { ...node("a", 12, true), uuid: "current" },
-      { ...node("b", 10), uuid: "stale" },
-    ]),
-  ).toMatchObject({
-    eligible: true,
-    candidate: { node: "a.example.test" },
-    divergent: [{ node: "b.example.test" }],
-  }));
-test("blocks equal-authority divergent histories as split brain", () =>
+test("blocks conflicting histories even when one has a majority", () =>
   expect(selectCandidate([node("a", 12), { ...node("b", 12), uuid: "other" }])).toMatchObject({
     eligible: false,
     code: "SPLIT_BRAIN",

@@ -20,6 +20,7 @@ test.each([
   "http://127.0.0.1",
   "ftp://one.example.test",
   "http://one.example.test.",
+  "http://user:secret@one.example.test",
 ])("rejects invalid peer target %s", (peer) => {
   expect(() => normalizeDrainPeers([peer])).toThrow("drain target peers must be FQDN URLs");
 });

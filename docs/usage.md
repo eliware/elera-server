@@ -36,8 +36,8 @@ Use [.env.example](../.env.example) as a placeholder template. Replace every pla
 
 Set `ROOT_TOKEN` before you call the control API. Set `ELERA_PEER_TOKEN` for peer traffic. The supervisor uses `ROOT_TOKEN` when no peer token is set. Recovery startup fails closed when both tokens are unset. Set `ELERA_CREDENTIAL_KEY` before you use managed credentials.
 
-The supervisor also reads `ELERA_CLUSTER_BOOTSTRAP` only when it starts a MariaDB child process.
-The supervisor sets this value during an approved recovery handoff. Do not set it in the container environment.
+The supervisor sets `ELERA_CLUSTER_BOOTSTRAP` for MariaDB during an approved recovery handoff.
+Do not set this internal value in the container environment.
 
 First initialization requires an authenticated `elera-cli` operation. Usual startup does not initialize or repair a data directory.
 Use the documented recovery API when the cluster cannot start from valid quorum data.

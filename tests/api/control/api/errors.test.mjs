@@ -23,7 +23,12 @@ test("logs and returns the error status and message", () => {
   const request = { method: "POST", url: "/api/v1/items" };
   respondToControlApiError(error, target, request, log);
   expect(target.status).toBe(422);
-  expect(JSON.parse(target.body)).toEqual({ ok: false, error: "bad request" });
+  expect(JSON.parse(target.body)).toMatchObject({
+    apiVersion: "v1",
+    requestId: expect.any(String),
+    ok: false,
+    error: "bad request",
+  });
   expect(log.error).toHaveBeenCalledWith("Control API request failed", {
     error,
     method: "POST",
@@ -35,5 +40,10 @@ test("uses fallback status and message values", () => {
   const target = response();
   respondToControlApiError({}, target, { method: "GET", url: "/api/v1/status" });
   expect(target.status).toBe(500);
-  expect(JSON.parse(target.body)).toEqual({ ok: false, error: "[object Object]" });
+  expect(JSON.parse(target.body)).toMatchObject({
+    apiVersion: "v1",
+    requestId: expect.any(String),
+    ok: false,
+    error: "[object Object]",
+  });
 });

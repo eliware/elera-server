@@ -25,9 +25,13 @@ export async function acquireRecoveryLeases({
             signal: AbortSignal.timeout(config.timeoutMs),
           },
         );
-        const granted = response.ok && (await response.json()).data?.granted === true;
+        const claim = response.ok ? (await response.json()).data : undefined;
+        const granted =
+          claim?.granted === true &&
+          claim.epoch === decision.epoch &&
+          claim.winner === decision.winner;
         recoveryAudit.lease({ node: node.name, granted, epoch: decision.epoch });
-        return leaseClaim(node.name, decision, granted);
+        return leaseClaim(node.name, decision, granted, response.ok && claim);
       } catch {
         recoveryAudit.lease({ node: node.name, granted: false, epoch: decision.epoch });
         return leaseClaim(node.name, decision, false);
@@ -37,12 +41,12 @@ export async function acquireRecoveryLeases({
   return claims;
 }
 
-function leaseClaim(member, decision, granted) {
+function leaseClaim(member, decision, granted, peerClaim) {
   return {
     member,
-    epoch: decision.epoch,
-    winner: decision.winner,
+    epoch: peerClaim?.epoch,
+    winner: peerClaim?.winner,
     granted,
-    authenticated: true,
+    authenticated: Boolean(peerClaim && granted),
   };
 }

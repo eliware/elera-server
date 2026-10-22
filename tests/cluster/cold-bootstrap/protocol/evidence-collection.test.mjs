@@ -27,7 +27,7 @@ test("collects and validates evidence from local and remote nodes", async () => 
     "b.example.test",
   );
 });
-test("detects an active primary before recovery evidence validation", async () => {
+test("validates a fresh active primary with a matching quorum", async () => {
   const collector = createRecoveryEvidenceCollector({
     nodes: [{ name: "a.example.test", local: true }, { name: "b.example.test" }],
     localEvidence: async () => ({
@@ -40,13 +40,50 @@ test("detects an active primary before recovery evidence validation", async () =
         ready: "ON",
       },
     }),
-    fetchEvidence: async () => {
-      throw new Error("peer unavailable");
-    },
+    fetchEvidence: async () => ({
+      ...recoveryEvidence("b.example.test", 2),
+      active: true,
+      galera: {
+        clusterUuid: "cluster",
+        clusterStatus: "Primary",
+        localState: "Synced",
+        ready: "ON",
+      },
+    }),
     now: () => new Date(),
     maxEvidenceAgeMs: 10_000,
   });
   await expect(collector.collect()).resolves.toMatchObject({ activePrimary: true });
+});
+
+test("rejects stale active-primary evidence", async () => {
+  const stale = {
+    ...recoveryEvidence("a.example.test", 3),
+    active: true,
+    observedAt: new Date(Date.now() - 20_000).toISOString(),
+    galera: { clusterUuid: "cluster", clusterStatus: "Primary", localState: "Synced", ready: "ON" },
+  };
+  const collector = createRecoveryEvidenceCollector({
+    nodes: [{ name: "a.example.test", local: true }],
+    localEvidence: async () => stale,
+    fetchEvidence: async () => undefined,
+    now: () => new Date(),
+    maxEvidenceAgeMs: 1000,
+  });
+  await expect(collector.collect()).rejects.toMatchObject({ code: "STALE_RECOVERY_EVIDENCE" });
+});
+
+test("rejects evidence attributed to a different configured member", async () => {
+  const collector = createRecoveryEvidenceCollector({
+    nodes: [{ name: "a.example.test", local: true }],
+    localEvidence: async () => recoveryEvidence("other.example.test", 3),
+    fetchEvidence: async () => undefined,
+    now: () => new Date(),
+    maxEvidenceAgeMs: 1000,
+  });
+  await expect(collector.collect()).rejects.toMatchObject({
+    code: "RECOVERY_EVIDENCE_IDENTITY_MISMATCH",
+  });
 });
 
 import { createColdRecoveryProtocol } from "../../../../src/cluster/cold-bootstrap/protocol.mjs";

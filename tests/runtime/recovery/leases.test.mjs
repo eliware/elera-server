@@ -29,7 +29,12 @@ test("records granted and denied recovery lease claims", async () => {
   const recoveryAudit = { lease: jest.fn() };
   const fetchImpl = jest
     .fn()
-    .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { granted: true } }) })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: { granted: true, epoch: decision.epoch, winner: decision.winner },
+      }),
+    })
     .mockRejectedValueOnce(new Error("offline"));
   await expect(
     acquireRecoveryLeases({
@@ -50,13 +55,29 @@ test("records granted and denied recovery lease claims", async () => {
     },
     {
       member: "b.example.test",
-      epoch: decision.epoch,
-      winner: decision.winner,
+      epoch: undefined,
+      winner: undefined,
       granted: false,
-      authenticated: true,
+      authenticated: false,
     },
   ]);
   expect(recoveryAudit.lease).toHaveBeenCalledTimes(2);
+});
+
+test("rejects stale or mismatched peer lease grants", async () => {
+  const fetchImpl = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ data: { granted: true, epoch: "old", winner: decision.winner } }),
+  });
+  const claims = await acquireRecoveryLeases({
+    decision,
+    members: [nodes[0]],
+    config,
+    environment: { ROOT_TOKEN: "root" },
+    fetchImpl,
+    recoveryAudit: { lease: jest.fn() },
+  });
+  expect(claims[0]).toMatchObject({ granted: false, authenticated: false });
 });
 
 test("rejects lease URLs for a different member host", async () => {

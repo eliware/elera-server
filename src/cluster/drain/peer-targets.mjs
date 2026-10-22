@@ -13,6 +13,8 @@ export function normalizeDrainPeers(peers = []) {
         }
         if (
           !["http:", "https:"].includes(url.protocol) ||
+          url.username !== "" ||
+          url.password !== "" ||
           isIP(url.hostname) ||
           !url.hostname.includes(".") ||
           url.hostname.endsWith(".")

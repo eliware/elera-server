@@ -8,10 +8,11 @@ saved and recovered sequence numbers, `safe_to_bootstrap`, data-directory
 status, current `Primary`/`Synced` state, data generation, and timestamp.
 Each received record must be new and match the recovery cluster UUID. A missing peer is allowed only when valid records remain from more than half of the members.
 
-Supervisors select the sole valid `safe_to_bootstrap` member, or if not the
-highest recovered sequence number. A node-name tie-break is permitted only
-when UUID and sequence number are same. Conflicting histories, divergent
-UUID mismatches, stale data, or a quorum lacking the required member count prevent recovery.
+Supervisors require a single cluster UUID history before recovery. They select
+the sole valid `safe_to_bootstrap` member, or the member with the highest
+recovered sequence number. A node-name tie-break is permitted only when UUID
+and sequence number match. Conflicting histories, stale data, or a quorum
+lacking the required member count prevent recovery.
 
 The result is an atomically persisted recovery epoch containing the cluster
 UUID, data digest, winner, sequence number, timestamp, and quorum members.

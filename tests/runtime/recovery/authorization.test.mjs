@@ -148,7 +148,10 @@ test("validates authorization inputs and leaves non-bootstrap decisions unchange
 });
 
 test("authorizes winner without mutating Galera state", async () => {
-  const value = base(async () => ({ ok: true, json: async () => ({ data: { granted: true } }) }));
+  const value = base(async () => ({
+    ok: true,
+    json: async () => ({ data: { granted: true, epoch: 3, winner: "a" } }),
+  }));
   const promote = jest.fn();
   await expect(authorizeSupervisorRecovery({ ...value, promote })).resolves.toMatchObject({
     args: ["--x", "--bootstrap"],
@@ -163,7 +166,10 @@ test("authorizes winner without mutating Galera state", async () => {
   expect(value.recoveryState.set).toHaveBeenCalledWith("recovery-authorized", expect.any(Object));
 });
 test("promotes an existing winner state file after recovery authorization", async () => {
-  const value = base(async () => ({ ok: true, json: async () => ({ data: { granted: true } }) }));
+  const value = base(async () => ({
+    ok: true,
+    json: async () => ({ data: { granted: true, epoch: 3, winner: "a" } }),
+  }));
   const promote = jest.fn();
   const pathExists = jest.fn().mockResolvedValue(undefined);
   await expect(
@@ -173,7 +179,10 @@ test("promotes an existing winner state file after recovery authorization", asyn
   expect(promote).toHaveBeenCalledWith("/data/grastate.dat");
 });
 test("fails closed when winner state preparation fails", async () => {
-  const value = base(async () => ({ ok: true, json: async () => ({ data: { granted: true } }) }));
+  const value = base(async () => ({
+    ok: true,
+    json: async () => ({ data: { granted: true, epoch: 3, winner: "a" } }),
+  }));
   const error = new Error("state is unreadable");
   await expect(
     authorizeSupervisorRecovery({
@@ -184,7 +193,10 @@ test("fails closed when winner state preparation fails", async () => {
   ).rejects.toBe(error);
 });
 test("allows a fresh explicit bootstrap without grastate.dat", async () => {
-  const value = base(async () => ({ ok: true, json: async () => ({ data: { granted: true } }) }));
+  const value = base(async () => ({
+    ok: true,
+    json: async () => ({ data: { granted: true, epoch: 3, winner: "a" } }),
+  }));
   const pathExists = jest
     .fn()
     .mockRejectedValue(Object.assign(new Error("missing"), { code: "ENOENT" }));
@@ -212,7 +224,10 @@ test("records a failed lease request as a denied claim", async () => {
   );
 });
 test("blocks and audits authorization protocol failures", async () => {
-  const value = base(async () => ({ ok: true, json: async () => ({ data: { granted: true } }) }));
+  const value = base(async () => ({
+    ok: true,
+    json: async () => ({ data: { granted: true, epoch: 3, winner: "a" } }),
+  }));
   value.recoveryProtocol.authorize.mockRejectedValue(new Error("epoch changed"));
   value.recoveryAudit.failure = jest.fn();
   value.log.error = jest.fn();

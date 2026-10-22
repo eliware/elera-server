@@ -13,6 +13,13 @@ export async function handleControlCredentialRoute(
   } = {},
 ) {
   if (method === "POST" && url.pathname === "/api/v1/credentials/lease") {
+    if (!hasCredentialScope(auth)) {
+      response.json(403, {
+        ok: false,
+        error: "a credential authorization scope is required",
+      });
+      return true;
+    }
     const leaseRequest = validate(await read(request));
     if (typeof leaseCredentials !== "function") {
       response.json(501, {
@@ -43,6 +50,11 @@ export async function handleControlCredentialRoute(
 
 async function manageLease({ request, response, managed, url, read, bundle, environment, auth }) {
   const body = await read(request);
+  const requiredScope = "credential:refresh";
+  if (!hasCredentialScope(auth, requiredScope)) {
+    response.json(403, { ok: false, error: "a credential authorization scope is required" });
+    return true;
+  }
   if (typeof managed?.lease !== "function") {
     response.json(501, { ok: false, error: "credential management is not configured" });
     return true;
@@ -68,6 +80,16 @@ async function manageLease({ request, response, managed, url, read, bundle, envi
     data: bundle({ ...result, ports: result.ports ?? defaultPorts(environment) }),
   });
   return true;
+}
+
+function hasCredentialScope(auth, required) {
+  return (
+    auth?.root === true ||
+    auth?.scopes?.includes("*") ||
+    (required
+      ? auth?.scopes?.includes(required)
+      : auth?.scopes?.some((scope) => ["credential:issue", "credential:refresh"].includes(scope)))
+  );
 }
 
 const defaultPorts = (environment) => ({
