@@ -1,4 +1,4 @@
-import { isIP } from "node:net";
+import { normalizeDrainPeers } from "./drain/peer-targets.mjs";
 
 export function createDrainPropagation({
   drain,
@@ -9,28 +9,7 @@ export function createDrainPropagation({
 } = {}) {
   if (!drain || typeof drain.begin !== "function" || typeof drain.end !== "function")
     throw new TypeError("drain manager is required");
-  const targets = [
-    ...new Set(
-      peers.filter(Boolean).map((peer) => {
-        if (typeof peer !== "string") throw new TypeError("drain target peers must be FQDN URLs");
-        let url;
-        try {
-          url = new URL(peer);
-        } catch {
-          throw new TypeError("drain target peers must be FQDN URLs");
-        }
-        if (
-          !["http:", "https:"].includes(url.protocol) ||
-          isIP(url.hostname) ||
-          !url.hostname.includes(".") ||
-          url.hostname.endsWith(".")
-        ) {
-          throw new TypeError("drain target peers must be FQDN URLs");
-        }
-        return peer.replace(/\/+$/, "");
-      }),
-    ),
-  ];
+  const targets = normalizeDrainPeers(peers);
   const propagate = (value) =>
     Promise.all(
       targets.map(async (peer) => {

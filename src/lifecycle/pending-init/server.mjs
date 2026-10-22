@@ -9,6 +9,7 @@ import { handlePendingInitResetRoute } from "./pending/init/reset-route.mjs";
 import { createPendingInitializationRoute } from "./pending/init/initialize-route.mjs";
 import { handlePendingInitAuthRoute } from "./pending/init/auth-route.mjs";
 import { handlePendingInitFallbackRoute } from "./pending/init/fallback-route.mjs";
+import { routePendingInitRequest } from "./route-request.mjs";
 
 export function createPendingInitServer({
   environment = process.env,
@@ -48,12 +49,12 @@ export function createPendingInitServer({
     recoveryRequired,
     standaloneOperation,
   });
-  const server = createServer(async (request, response) => {
-    if (handlePendingInitHealthRoute(request, response)) return;
-    if (await handlePendingInitEvidenceRoute(request, response, { authorized, coldEvidence }))
-      return;
-    if (
-      await handlePendingRecoveryRoute({
+  const handlers = {
+    health: handlePendingInitHealthRoute,
+    evidence: (request, response) =>
+      handlePendingInitEvidenceRoute(request, response, { authorized, coldEvidence }),
+    recovery: (request, response) =>
+      handlePendingRecoveryRoute({
         request,
         response,
         authorized,
@@ -66,17 +67,18 @@ export function createPendingInitServer({
         identity,
         members: intent.cluster.members,
         log,
-      })
-    )
-      return;
-    if (
+      }),
+    recoveryAuth: (request, response) =>
       recoveryRequired &&
-      handlePendingInitAuthRoute(request, response, { authorized, recoveryReason })
-    )
-      return;
-    if (await handleInitialization(request, response)) return;
-    if (await handlePendingInitResetRoute(request, response, { authorized, nodeDataReset })) return;
-    handlePendingInitFallbackRoute(response, { recoveryRequired, recoveryReason });
-  });
+      handlePendingInitAuthRoute(request, response, { authorized, recoveryReason }),
+    initialization: handleInitialization,
+    reset: (request, response) =>
+      handlePendingInitResetRoute(request, response, { authorized, nodeDataReset }),
+    fallback: (response) =>
+      handlePendingInitFallbackRoute(response, { recoveryRequired, recoveryReason }),
+  };
+  const server = createServer((request, response) =>
+    routePendingInitRequest(request, response, handlers),
+  );
   return { server, initialize };
 }

@@ -118,3 +118,54 @@ test("blocks a quorum when no node has a recoverable sequence", async () => {
     reason: "no recoverable seqno exists",
   });
 });
+
+test("blocks when a failed peer leaves less than a majority of evidence", async () => {
+  const protocol = createColdRecoveryProtocol({
+    nodes: [
+      { name: "a.example.test", local: true },
+      { name: "b.example.test", url: "http://b.example.test" },
+      { name: "c.example.test", url: "http://c.example.test" },
+    ],
+    localEvidence: async () => recoveryEvidence("a.example.test", 4),
+    fetchEvidence: async () => {
+      throw new Error("peer unavailable");
+    },
+    store: {
+      async read() {},
+      async write(value) {
+        return value;
+      },
+    },
+  });
+  await expect(protocol.plan()).resolves.toMatchObject({
+    mode: "blocked",
+    reason: "peer unavailable",
+  });
+});
+
+test("makes three supervisors select the same recovery winner", async () => {
+  const nodes = ["a.example.test", "b.example.test", "c.example.test"].map((name) => ({
+    name,
+    url: `http://${name}`,
+  }));
+  const evidence = Object.fromEntries(
+    nodes.map(({ name }, index) => [name, recoveryEvidence(name, index + 4)]),
+  );
+  const makeStore = () => ({
+    async read() {},
+    async write(value) {
+      return value;
+    },
+  });
+  const protocols = nodes.map((local) =>
+    createColdRecoveryProtocol({
+      nodes: nodes.map((node) => ({ ...node, local: node.name === local.name })),
+      localEvidence: async () => evidence[local.name],
+      fetchEvidence: async (url) => evidence[new URL(url).hostname],
+      store: makeStore(),
+    }),
+  );
+  const plans = await Promise.all(protocols.map((protocol) => protocol.plan()));
+  expect(new Set(plans.map((plan) => plan.epoch)).size).toBe(1);
+  expect(new Set(plans.map((plan) => plan.winner.node))).toEqual(new Set(["c.example.test"]));
+});

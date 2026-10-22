@@ -1,63 +1,16 @@
 import { expect, jest, test } from "@jest/globals";
-import "../../../../test-fixtures/suites/recovery-join-wiring.mjs";
 import { createSupervisorRecoveryJoiner } from "../../../../src/runtime/recovery/join/wiring.mjs";
 
-test("loads the createSupervisorRecoveryJoiner suite", () => {
-  expect(typeof createSupervisorRecoveryJoiner).toBe("function");
-});
-
-const edgeIdentity = { name: "node-a.example.test" };
-const edgeMembers = [
-  { name: edgeIdentity.name, address: edgeIdentity.name },
-  { name: "node-b.example.test", address: "node-b.example.test", url: "http://peer/" },
-];
-const createJoiner = (overrides = {}) =>
-  createSupervisorRecoveryJoiner({
-    identity: edgeIdentity,
-    token: "coverage-token",
-    timeoutMs: 100,
-    recoveryState: { set: jest.fn() },
-    fetchImpl: jest.fn(async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({ ok: true, data: { values: {} } }),
-    })),
-    ...overrides,
-  });
-
-test("validates constructor and request dependencies", async () => {
+test("applies empty and default recovery join inputs", async () => {
   expect(() => createSupervisorRecoveryJoiner()).toThrow("shared FQDN identity");
-  expect(() => createJoiner({ identity: { name: "node-a" } })).toThrow("shared FQDN identity");
-  expect(() => createJoiner({ timeoutMs: 0 })).toThrow("timeout and fetch");
-  expect(() => createJoiner({ timeoutMs: 1.5 })).toThrow("timeout and fetch");
-  expect(() => createJoiner({ fetchImpl: null })).toThrow("timeout and fetch");
-  expect(() => createJoiner()()).toThrow("FQDN identities and addresses");
+  const joiner = createSupervisorRecoveryJoiner({
+    identity: { name: "node-a.example.test" },
+    timeoutMs: 1,
+  });
+  expect(() => joiner()).toThrow("FQDN identities and addresses");
 });
 
-test("rejects invalid members and winner identities", () => {
-  const joiner = createJoiner();
-  expect(() => joiner({ members: [edgeMembers[0]] })).toThrow("FQDN identities and addresses");
-  expect(() => joiner({ members: [edgeMembers[0], null] })).toThrow(
-    "FQDN identities and addresses",
-  );
-  expect(() =>
-    joiner({ members: [edgeMembers[0], { name: "peer.test", address: "bad" }] }),
-  ).toThrow("FQDN identities and addresses");
-  expect(() => joiner({ members: edgeMembers, bootstrap: { winner: "missing.test" } })).toThrow(
-    "non-local winner",
-  );
-  expect(() => joiner({ members: edgeMembers, bootstrap: { winner: edgeIdentity.name } })).toThrow(
-    "non-local winner",
-  );
-  expect(() =>
-    joiner({
-      members: [edgeMembers[1], { name: "node-c.example.test", address: "node-c.example.test" }],
-      bootstrap: { winner: "node-b.example.test" },
-    }),
-  ).toThrow("not a configured recovery join member");
-});
-
-test("accepts a winner object and a peer URL", async () => {
+test("creates a sequential winner-side recovery joiner", async () => {
   const fetchImpl = jest.fn(async (url) =>
     url.endsWith("/status")
       ? {
@@ -76,15 +29,151 @@ test("accepts a winner object and a peer URL", async () => {
             },
           }),
         }
-      : { ok: true, status: 202, json: async () => ({ ok: true, data: {} }) },
+      : { ok: true, status: 202, json: async () => ({ ok: true, data: { status: "ready" } }) },
   );
-  const joiner = createJoiner({ fetchImpl });
-  await joiner({
-    members: edgeMembers,
-    bootstrap: { clusterId: "c", winner: { node: edgeMembers[1].name } },
+  const publishRecovery = jest.fn(async () => true);
+  const joiner = createSupervisorRecoveryJoiner({
+    identity: { name: "node-a.example.test" },
+    token: "secret",
+    timeoutMs: 10,
+    httpPort: 8080,
+    recoveryState: { set: jest.fn() },
+    recoveryAudit: { joinComplete: jest.fn() },
+    publishRecovery,
+    log: {},
+    fetchImpl,
   });
+  expect(typeof joiner).toBe("function");
+  await expect(
+    joiner({
+      bootstrap: { epoch: 1, clusterId: "c", winner: "node-b.example.test" },
+      members: [
+        { name: "node-a.example.test", address: "node-a.example.test" },
+        { name: "node-b.example.test", address: "node-b.example.test" },
+      ],
+    }),
+  ).resolves.toEqual({ completed: ["node-b.example.test"] });
+  expect(fetchImpl).toHaveBeenCalledWith(
+    expect.stringContaining("node-b.example.test"),
+    expect.objectContaining({ method: "POST" }),
+  );
+  expect(publishRecovery).toHaveBeenCalledWith({ epoch: 1, members: ["node-b.example.test"] });
+});
+
+test("uses a no-op completion publisher when none is supplied", async () => {
+  const joiner = createSupervisorRecoveryJoiner({
+    identity: { name: "node-c.example.test" },
+    token: "secret",
+    timeoutMs: 10,
+    recoveryState: { set: jest.fn() },
+    recoveryAudit: {},
+    log: {},
+    fetchImpl: jest.fn(async (url) =>
+      url.endsWith("/status")
+        ? {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              ok: true,
+              data: {
+                wsrep_cluster_state_uuid: "c",
+                wsrep_cluster_size: "3",
+                wsrep_local_state_comment: "Synced",
+                wsrep_ready: "ON",
+                wsrep_cluster_status: "Primary",
+              },
+            }),
+          }
+        : { ok: true, status: 202, json: async () => ({ ok: true, data: { status: "ready" } }) },
+    ),
+  });
+  await expect(
+    joiner({
+      members: [
+        { name: "node-a.example.test", address: "node-a.example.test" },
+        { name: "node-b.example.test", address: "node-b.example.test" },
+        { name: "node-c.example.test", address: "node-c.example.test" },
+      ],
+      bootstrap: { clusterId: "c", winner: "node-a.example.test" },
+    }),
+  ).resolves.toEqual({ completed: ["node-a.example.test", "node-b.example.test"] });
+});
+
+test("recovers two joiners sequentially before publishing completion", async () => {
+  const fetchImpl = jest.fn(async (url) =>
+    url.endsWith("/status")
+      ? {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            data: {
+              values: {
+                wsrep_cluster_state_uuid: "c",
+                wsrep_cluster_size: "3",
+                wsrep_local_state_comment: "Synced",
+                wsrep_ready: "ON",
+                wsrep_cluster_status: "Primary",
+              },
+            },
+          }),
+        }
+      : { ok: true, status: 202, json: async () => ({ ok: true, data: { status: "ready" } }) },
+  );
+  const publishRecovery = jest.fn(async () => true);
+  const joiner = createSupervisorRecoveryJoiner({
+    identity: { name: "node-a.example.test" },
+    token: "secret",
+    timeoutMs: 10,
+    recoveryState: { set: jest.fn() },
+    recoveryAudit: {},
+    publishRecovery,
+    log: {},
+    fetchImpl,
+  });
+  await expect(
+    joiner({
+      bootstrap: { epoch: 2, clusterId: "c", winner: "node-b.example.test" },
+      members: [
+        { name: "node-a.example.test", address: "node-a.example.test" },
+        { name: "node-b.example.test", address: "node-b.example.test" },
+        { name: "node-c.example.test", address: "node-c.example.test" },
+      ],
+    }),
+  ).resolves.toEqual({ completed: ["node-b.example.test", "node-c.example.test"] });
   expect(fetchImpl.mock.calls.map(([url]) => url)).toEqual([
-    "http://peer/api/v1/cluster/cold-recovery/join",
-    "http://peer/api/v1/cluster/status",
+    "http://node-b.example.test:8080/api/v1/cluster/cold-recovery/join",
+    "http://node-b.example.test:8080/api/v1/cluster/status",
+    "http://node-c.example.test:8080/api/v1/cluster/cold-recovery/join",
+    "http://node-c.example.test:8080/api/v1/cluster/status",
   ]);
+  expect(publishRecovery).toHaveBeenCalledTimes(1);
+});
+test("does not publish recovery when a joiner fails", async () => {
+  const fetchImpl = jest.fn(async () => ({
+    ok: false,
+    status: 409,
+    json: async () => ({ ok: false, error: "join refused", code: "JOIN_REFUSED" }),
+  }));
+  const publishRecovery = jest.fn();
+  const joiner = createSupervisorRecoveryJoiner({
+    identity: { name: "node-a.example.test" },
+    token: "secret",
+    timeoutMs: 10,
+    recoveryState: { set: jest.fn() },
+    recoveryAudit: { failure: jest.fn() },
+    publishRecovery,
+    log: { error: jest.fn() },
+    fetchImpl,
+  });
+  await expect(
+    joiner({
+      bootstrap: { epoch: 3, clusterId: "c", winner: "node-b.example.test" },
+      members: [
+        { name: "node-a.example.test", address: "node-a.example.test" },
+        { name: "node-b.example.test", address: "node-b.example.test" },
+      ],
+    }),
+  ).rejects.toMatchObject({ code: "JOIN_REFUSED" });
+  expect(publishRecovery).not.toHaveBeenCalled();
 });

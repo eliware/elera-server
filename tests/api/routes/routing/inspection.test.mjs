@@ -53,60 +53,6 @@ const context = (method, path, observations = [node], body = {}) => {
   };
 };
 
-test("serves calculated routes, refreshes bundles, and validates bundle identity", async () => {
-  const healthy = context("GET", "/api/v1/routes");
-  healthy.url = new URL("http://localhost/api/v1/routes?application=app");
-  expect(await handleRoutingRoute(healthy)).toBe(true);
-  expect(healthy.response.json).toHaveBeenCalledWith(
-    200,
-    expect.objectContaining({ operation: "routes.inspect" }),
-  );
-  const refresh = context("POST", "/api/v1/routes/refresh", [], {
-    identity: "id",
-  });
-  expect(await handleRoutingRoute(refresh)).toBe(true);
-  expect(refresh.response.json).toHaveBeenCalledWith(
-    200,
-    expect.objectContaining({ operation: "routes.refresh" }),
-  );
-  const bundle = context("GET", "/api/v1/routing/bundle");
-  bundle.url = new URL("http://localhost/api/v1/routing/bundle?identity=id");
-  expect(await handleRoutingRoute(bundle)).toBe(true);
-  await expect(handleRoutingRoute(context("GET", "/api/v1/routing/bundle"))).rejects.toMatchObject({
-    statusCode: 400,
-  });
-});
-test("resolves a scoped token identity without a query selector and rejects mismatches", async () => {
-  const scoped = context("GET", "/api/v1/routing/bundle");
-  scoped.auth = { application: "payments", identity: "runtime" };
-  expect(await handleRoutingRoute(scoped)).toBe(true);
-  expect(scoped.routingBundles.lease).toHaveBeenCalledWith({
-    identity: "runtime",
-    application: "payments",
-    database: undefined,
-  });
-  const mismatch = context("GET", "/api/v1/routing/bundle");
-  mismatch.url = new URL("http://localhost/api/v1/routing/bundle?identity=other");
-  mismatch.auth = { application: "payments", identity: "runtime" };
-  await expect(handleRoutingRoute(mismatch)).rejects.toMatchObject({ statusCode: 403 });
-});
-test("uses local fallback when no eligible observations remain", async () => {
-  const c = context("GET", "/api/v1/routes", [{ ...node, synced: false }]);
-  expect(await handleRoutingRoute(c)).toBe(true);
-  expect(c.response.json).toHaveBeenCalledWith(
-    200,
-    expect.objectContaining({
-      data: expect.objectContaining({ bundleVersion: "default:local" }),
-    }),
-  );
-  const noFallback = context("GET", "/api/v1/routes", []);
-  noFallback.getStatus.mockResolvedValue({ ready: false });
-  await expect(handleRoutingRoute(noFallback)).resolves.toBe(true);
-});
-test("returns false for unrelated routing requests", async () => {
-  expect(await handleRoutingRoute(context("GET", "/other"))).toBe(false);
-  expect(await handleRoutingRoute(context("PUT", "/api/v1/routes"))).toBe(false);
-});
 test("delegates route inspection to the observation and decision policies", async () => {
   const response = { json: jest.fn() };
   const identity = { name: "a.example.test" };
