@@ -54,6 +54,17 @@ test("rejects non-string hostname output", () => {
   );
 });
 
+test("uses a valid configured container hostname", () => {
+  const original = process.env.HOSTNAME;
+  process.env.HOSTNAME = "elera-0.lab.local";
+  try {
+    expect(runtimeIdentity()).toEqual({ name: "elera-0.lab.local" });
+  } finally {
+    if (original === undefined) delete process.env.HOSTNAME;
+    else process.env.HOSTNAME = original;
+  }
+});
+
 test("uses the host command when no hostname provider is supplied", () => {
   try {
     expect(runtimeIdentity().name).toMatch(/^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/);

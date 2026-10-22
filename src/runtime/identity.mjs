@@ -17,7 +17,9 @@ const isFqdn = (value) =>
   /[A-Za-z]/.test(value) &&
   value.split(".").every((label) => /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label));
 
-export function runtimeIdentity({ hostname = fullyQualifiedHostname } = {}) {
+export function runtimeIdentity({
+  hostname = () => (isFqdn(process.env.HOSTNAME) ? process.env.HOSTNAME : fullyQualifiedHostname()),
+} = {}) {
   const value = hostname();
   const name = typeof value === "string" ? value.trim() : "";
   if (!name) throw new Error("hostname -f returned an empty runtime identity");
