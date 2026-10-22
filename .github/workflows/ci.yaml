@@ -31,3 +31,9 @@ jobs:
       - run: npm -g install npm@latest
       - run: npm ci
       - run: npm test
+      - if: always()
+        run: npm run test:log
+      - if: always()
+        run: npm run coverage:summary
+      - if: always()
+        run: npm run test:jest-output
