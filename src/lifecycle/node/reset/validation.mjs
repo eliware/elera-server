@@ -8,7 +8,7 @@ export async function validateNodeDataReset({
   node,
   expectedPath,
   getStatus,
-  getRecoveryState = () => ({}),
+  getRecoveryState,
   offlineRecovery = false,
 } = {}) {
   if (request.node !== node) throw failure("node identity does not match this supervisor");
@@ -28,7 +28,7 @@ export async function validateNodeDataReset({
     if (!offlineRecovery || request.offline !== true) throw error;
     status = { ready: false, values: {} };
   }
-  const recovery = getRecoveryState() ?? {};
+  const recovery = getRecoveryState ? (getRecoveryState() ?? {}) : {};
   const resync = request.recoveryDisposition === "single-member-resync";
   if (
     !resync &&

@@ -20,6 +20,7 @@ test("validates a dry-run reset request", async () => {
     dryRun: true,
     resync: false,
     initialized: false,
+    recovery: {},
   });
 });
 test("rejects unsafe or malformed requests", async () => {
