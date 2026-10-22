@@ -28,17 +28,18 @@ export function wireSupervisorStartupServices(options) {
     epoch: startupDecision.epoch,
     reason: startupDecision.reason,
   });
-  state.coldBootstrapService = config.elera
-    ? createSupervisorColdBootstrap({
-        members,
-        localEvidence: localEvidence?.local,
-        remoteEvidence: localEvidence?.remote,
-        bootstrapLocal: () => state.coldBootstrapLocal?.(),
-        config,
-        environment,
-        log,
-      })
-    : undefined;
+  state.coldBootstrapService =
+    config.elera && localEvidence
+      ? createSupervisorColdBootstrap({
+          members,
+          localEvidence: localEvidence?.local,
+          remoteEvidence: localEvidence?.remote,
+          bootstrapLocal: () => state.coldBootstrapLocal?.(),
+          config,
+          environment,
+          log,
+        })
+      : undefined;
   const services = createSupervisorStartupServices({
     args,
     config,
