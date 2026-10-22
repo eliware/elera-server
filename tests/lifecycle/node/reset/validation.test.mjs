@@ -1,11 +1,12 @@
 import { expect, jest, test } from "@jest/globals";
+import { resolve } from "node:path";
 import { createNodeDataReset } from "../../../../src/lifecycle/node/data-reset.mjs";
 import { nodeDataResetOptions } from "../../../../test-fixtures/lifecycle/node-data-reset-options.mjs";
 import { validateNodeDataReset } from "../../../../src/lifecycle/node/reset/validation.mjs";
 
 const base = {
   node: "node-a.example.test",
-  expectedPath: "C:\\data",
+  expectedPath: resolve("C:\\data"),
   request: {
     node: "node-a.example.test",
     dataDir: "C:\\data",
