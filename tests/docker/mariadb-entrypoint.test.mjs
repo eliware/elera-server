@@ -1,5 +1,6 @@
 import { expect as __fixture7_expect, test as __fixture7_test, jest } from "@jest/globals";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { expect, test } from "@jest/globals";
 import { installMemoryFileSystem } from "../../test-fixtures/memory-filesystem.mjs";
 
@@ -10,7 +11,8 @@ jest.unstable_mockModule("node:os", () => ({ tmpdir: () => "/tmp" }));
 const { readFile: __fixture7_readFile } = __memoryFs;
 const { mkdtemp, mkdir, rm } = __memoryFs;
 const tmpdir = () => "/tmp";
-const { runNode, startMariaDbEntrypoint } = await import("../../src/docker/mariadb-entrypoint.mjs");
+const { resolveEntrypointOptions, runIfEntrypoint, runNode, startMariaDbEntrypoint } =
+  await import("../../src/docker/mariadb-entrypoint.mjs");
 
 const base = (overrides = {}) => ({
   environment: { MARIADB_DATA_DIR: "/data" },
@@ -31,6 +33,34 @@ test("starts pending initialization for an empty data directory", async () => {
   await startMariaDbEntrypoint(options);
   expect(options.startPending).toHaveBeenCalledTimes(1);
   expect(options.runSupervisor).not.toHaveBeenCalled();
+});
+
+test("resolves default entrypoint dependencies without starting services", () => {
+  expect(resolveEntrypointOptions()).toMatchObject({
+    environment: process.env,
+    exists: expect.any(Function),
+    readDirectory: expect.any(Function),
+    initialize: expect.any(Function),
+    runSupervisor: expect.any(Function),
+  });
+});
+
+test("uses default dependencies safely for a missing data directory", async () => {
+  const startPending = jest.fn();
+  await startMariaDbEntrypoint({
+    environment: { MARIADB_DATA_DIR: "C:\\missing-elera-data" },
+    readDirectory: async () => [],
+    startPending,
+  });
+  expect(startPending).toHaveBeenCalledTimes(1);
+
+  const defaultEnvironmentStart = jest.fn();
+  await startMariaDbEntrypoint({
+    exists: async () => false,
+    readDirectory: async () => [],
+    startPending: defaultEnvironmentStart,
+  });
+  expect(defaultEnvironmentStart).toHaveBeenCalledTimes(1);
 });
 
 test("rejects a non-empty directory without a MariaDB system database", async () => {
@@ -98,4 +128,13 @@ test("runs a child process and captures its output", async () => {
 
 test("reports child process failure", async () => {
   await expect(runNode("missing-file.mjs")).rejects.toThrow("exited with");
+});
+
+test("starts the entrypoint only when the script path matches the module URL", async () => {
+  const start = jest.fn();
+  const path = "C:\\app\\entrypoint.mjs";
+  await runIfEntrypoint(pathToFileURL(path).href, path, start);
+  await expect(start).toHaveBeenCalledTimes(1);
+  await runIfEntrypoint(pathToFileURL(path).href, "C:\\app\\other.mjs", start);
+  expect(start).toHaveBeenCalledTimes(1);
 });

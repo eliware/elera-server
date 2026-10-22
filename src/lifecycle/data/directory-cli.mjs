@@ -16,5 +16,14 @@ export function runDataDirectoryCli(
   return result.action;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
-  runDataDirectoryCli();
+export function runDataDirectoryCliIfMain(moduleUrl, scriptPath, args, inspect, output, logError) {
+  if (scriptPath && moduleUrl === pathToFileURL(scriptPath).href)
+    return runDataDirectoryCli(args, inspect, output, logError);
+}
+
+runDataDirectoryCliIfMain(
+  import.meta.url,
+  process.argv[1],
+  process.argv.slice(2),
+  inspectDataDirectory,
+);

@@ -61,4 +61,7 @@ test("ignores invalid and duplicate peer identities", () => {
       localNodeId: "a.example.test",
     }),
   ).toBe("total-cluster-unavailable");
+  expect(shutdownCondition({ clusterSize: 3, observations: "invalid" })).toBe(
+    "total-cluster-unavailable",
+  );
 });

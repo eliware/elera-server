@@ -1,5 +1,5 @@
 import { expect, jest, test } from "@jest/globals";
-import { runWsrepRecover } from "../../src/runtime/wsrep-recovery.mjs";
+import { resolveWsrepRecoverOptions, runWsrepRecover } from "../../src/runtime/wsrep-recovery.mjs";
 
 function childProcess() {
   const listeners = {};
@@ -28,6 +28,18 @@ function childProcess() {
     },
   };
 }
+
+test("resolves native recovery options without starting a process", () => {
+  const defaults = resolveWsrepRecoverOptions();
+  expect(defaults).toMatchObject({
+    timeoutMs: 30000,
+    setTimer: setTimeout,
+    clearTimer: clearTimeout,
+  });
+  expect(defaults.spawnImpl).toEqual(expect.any(Function));
+  const custom = { spawnImpl: jest.fn(), timeoutMs: 2, setTimer: jest.fn(), clearTimer: jest.fn() };
+  expect(resolveWsrepRecoverOptions(custom)).toEqual(custom);
+});
 
 test("runs wsrep recovery with the protected local arguments", async () => {
   const child = childProcess();

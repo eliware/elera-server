@@ -4,4 +4,5 @@ import { calculateRoutes } from "../../src/routing/decision.mjs";
 
 test("loads the calculateRoutes suite", () => {
   expect(typeof calculateRoutes).toBe("function");
+  expect(calculateRoutes()).toMatchObject({ bundleVersion: "unknown:empty" });
 });

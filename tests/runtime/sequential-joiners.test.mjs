@@ -59,9 +59,33 @@ test("stops before the next joiner when verification fails", async () => {
 });
 
 test("rejects incomplete coordinator dependencies", async () => {
+  await expect(recoverJoinersSequentially()).rejects.toThrow(
+    "sequential joiner recovery dependencies",
+  );
   await expect(recoverJoinersSequentially({ joiners: members })).rejects.toThrow(
     "sequential joiner recovery dependencies",
   );
+});
+
+test("blocks stale epochs and permits recovery without a recorded epoch", async () => {
+  const options = {
+    joiners: [members[0]],
+    startJoiner: jest.fn(),
+    verifyJoiner: jest.fn().mockResolvedValue({ valid: true }),
+    recoveryState: { set: jest.fn(), snapshot: () => ({ epoch: 2 }) },
+    epoch: 1,
+  };
+  await expect(recoverJoinersSequentially(options)).rejects.toMatchObject({
+    code: "STALE_RECOVERY_EPOCH",
+    statusCode: 409,
+  });
+  await expect(
+    recoverJoinersSequentially({
+      ...options,
+      epoch: 2,
+      recoveryState: { set: jest.fn(), snapshot: () => undefined },
+    }),
+  ).resolves.toEqual({ completed: [members[0].name] });
 });
 
 test("uses the authenticated recovery join client when no start callback is supplied", async () => {

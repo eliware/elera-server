@@ -74,6 +74,7 @@ test("requires confirmation before explicit rebalance", async () => {
 });
 
 test("ignores unrelated routes and tolerates absent event", async () => {
+  await expect(handleRoutingAdminRoute()).resolves.toBe(false);
   expect(
     await handleRoutingAdminRoute({
       method: "GET",

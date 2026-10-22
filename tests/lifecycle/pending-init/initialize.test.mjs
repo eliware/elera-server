@@ -2,8 +2,21 @@ import { expect, jest, test } from "@jest/globals";
 import {
   initializePendingData,
   PENDING_INIT_SOCKET,
+  resolvePendingInitOptions,
   wait,
 } from "../../../src/lifecycle/pending-init/initialize.mjs";
+
+test("resolves safe defaults without starting initialization", () => {
+  expect(resolvePendingInitOptions()).toMatchObject({
+    environment: process.env,
+    log: console,
+    run: expect.any(Function),
+    start: expect.any(Function),
+    execute: expect.any(Function),
+    sleep: expect.any(Function),
+    socket: PENDING_INIT_SOCKET,
+  });
+});
 
 test("wait resolves after the requested delay", async () => {
   await wait(0);

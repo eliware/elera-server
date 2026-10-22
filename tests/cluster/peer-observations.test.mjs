@@ -117,3 +117,37 @@ test("rejects short peer URLs and rejects observations from the wrong peer ident
   expect(await client.refresh()).toEqual([{ accepted: false, reason: "identity-mismatch" }]);
   expect(store.upsert).not.toHaveBeenCalled();
 });
+
+test("builds peer URLs from address objects and checks peer identity", async () => {
+  const urls = [];
+  const store = { upsert: (item) => ({ accepted: item.nodeId === "peer.example.test" }) };
+  const response = { ok: true, json: async () => ({ data: [observation] }) };
+  const defaultPort = createPeerObservationClient({
+    peers: [null, { name: "peer.example.test", address: "peer.example.test" }],
+    store,
+    fetchImpl: async (url) => {
+      urls.push(url);
+      return response;
+    },
+  });
+  expect(await defaultPort.refresh()).toEqual([{ accepted: true }]);
+  expect(urls[0]).toContain("peer.example.test:8080");
+
+  const explicitPort = createPeerObservationClient({
+    peers: [{ name: "peer.example.test", address: "peer.example.test", port: 8081 }],
+    store,
+    fetchImpl: async (url) => {
+      urls.push(url);
+      return response;
+    },
+  });
+  expect(await explicitPort.refresh()).toEqual([{ accepted: true }]);
+  expect(urls[1]).toContain("peer.example.test:8081");
+  expect(() => createPeerObservationClient({ peers: [{}], store })).toThrow("valid HTTP(S) URLs");
+  expect(() =>
+    createPeerObservationClient({
+      peers: [{ name: "wrong.example.test", address: "peer.example.test" }],
+      store,
+    }),
+  ).toThrow("peer identity and address must match");
+});

@@ -8,6 +8,7 @@ test("returns no decision without a marker", async () => {
   ).resolves.toBeUndefined();
 });
 test("supports an omitted marker provider", async () => {
+  await expect(resolveCleanRestart()).resolves.toBeUndefined();
   await expect(resolveCleanRestart({})).resolves.toBeUndefined();
 });
 test("joins after validated peer and consumes marker", async () => {

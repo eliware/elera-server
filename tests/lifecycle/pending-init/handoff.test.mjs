@@ -79,6 +79,7 @@ test("cluster handoff treats an exit without code or signal as success", async (
 });
 
 test("cluster handoff provides safe defaults for optional callbacks", async () => {
+  expect(createClusterHandoff()).toBeInstanceOf(Function);
   const child = {
     once: jest.fn((event, callback) => {
       if (event === "exit") callback(0, null);

@@ -11,6 +11,7 @@ test("commits successful transactions and runs migrations", async () => {
     }),
   ).resolves.toBe("ok");
   await expect(sql.migration(["CREATE TABLE demo (id INT)"])).resolves.toBeUndefined();
+  await expect(sql.migration()).resolves.toBeUndefined();
   expect(query).toHaveBeenCalledWith("COMMIT");
 });
 

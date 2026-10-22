@@ -45,6 +45,10 @@ const makeDependencies = () => {
   };
 };
 
+test("applies all default dependencies when no options are provided", () => {
+  expect(() => createSupervisorApplicationContext()).toThrow();
+});
+
 test("builds the shared runtime context and callback links", () => {
   const data = makeDependencies();
   const context = createSupervisorApplicationContext(data.dependencies);

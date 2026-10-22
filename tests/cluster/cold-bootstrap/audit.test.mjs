@@ -60,6 +60,7 @@ test("uses the error channel for recovery failures", () => {
 });
 test("tolerates absent optional log methods", () => {
   const audit = createRecoveryAudit({});
+  expect(() => audit.event()).not.toThrow();
   expect(() => audit.event({ type: "recovery.evidence-collected" })).not.toThrow();
   expect(() => createRecoveryAudit().event({ type: "recovery.refused" })).not.toThrow();
   expect(() => createRecoveryAudit({ info: jest.fn() }).event({})).not.toThrow();

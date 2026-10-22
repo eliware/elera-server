@@ -36,6 +36,20 @@ test("requires coordinator dependencies", () => {
   expect(() => createColdBootstrapCoordinator()).toThrow("dependencies");
 });
 
+test("rejects evidence from a node with a mismatched identity", async () => {
+  const coordinator = createColdBootstrapCoordinator({
+    nodes: [{ name: "one.example.test", local: true }],
+    local: async () => ({ node: "other.example.test", state: {}, active: false }),
+    remote: jest.fn(),
+    bootstrapLocal: jest.fn(),
+  });
+  await expect(coordinator.plan()).resolves.toMatchObject({
+    eligible: false,
+    error:
+      "recovery data identity mismatch: expected one.example.test, received other.example.test",
+  });
+});
+
 test("executes the selected local candidate and revalidates its evidence", async () => {
   const local = jest.fn(async () => ({
     state: { uuid: "u", seqno: 10, safeToBootstrap: true },

@@ -22,6 +22,111 @@ test("returns a join plan when active primary evidence exists", async () => {
     evidence,
   });
   expect(publishEvent).toHaveBeenCalledWith({ type: "recovery.evidence-collected", evidence });
+  const unknownSize = makePlanner({
+    nodes: [{ name: "db.example.test" }],
+    collect: async () => ({ evidence: [{ node: "db.example.test", galera: {} }] }),
+    isActivePrimary: () => true,
+  });
+  await expect(unknownSize.planner.plan()).resolves.toMatchObject({
+    eligible: true,
+    mode: "join",
+  });
+});
+
+const makePlanner = ({ nodes, collect, isActivePrimary = () => false }) => {
+  const persist = jest.fn();
+  const publishEvent = jest.fn();
+  const setCurrent = jest.fn();
+  return {
+    planner: createRecoveryPlanner({
+      nodes,
+      collect,
+      isActivePrimary,
+      now: () => new Date("2026-10-14T00:00:00Z"),
+      persist,
+      publishEvent,
+      debug: jest.fn(),
+      setCurrent,
+    }),
+    persist,
+    publishEvent,
+    setCurrent,
+  };
+};
+
+test("blocks collection failures and partial evidence with useful reasons", async () => {
+  const nodes = [{ name: "a.example.test" }, { name: "b.example.test" }];
+  const typed = makePlanner({
+    nodes,
+    collect: async () => {
+      throw Object.assign(new Error("identity mismatch"), { code: "IDENTITY_MISMATCH" });
+    },
+  });
+  await expect(typed.planner.plan()).resolves.toMatchObject({
+    mode: "blocked",
+    code: "IDENTITY_MISMATCH",
+  });
+  const untyped = makePlanner({
+    nodes,
+    collect: async () => {
+      throw new Error("offline");
+    },
+  });
+  await expect(untyped.planner.plan()).resolves.toMatchObject({
+    code: "RECOVERY_EVIDENCE_UNAVAILABLE",
+  });
+
+  const partial = makePlanner({
+    nodes,
+    collect: async () => ({ evidence: [{ node: "a.example.test" }] }),
+  });
+  await expect(partial.planner.plan()).resolves.toMatchObject({
+    code: "INSUFFICIENT_RECOVERY_EVIDENCE",
+    reason: expect.stringContaining("all configured supervisors"),
+  });
+  const mismatched = makePlanner({
+    nodes,
+    collect: async () => ({
+      evidence: [{ node: "a.example.test" }],
+      failures: [
+        {
+          code: "RECOVERY_EVIDENCE_IDENTITY_MISMATCH",
+          message: "peer identity mismatch",
+        },
+      ],
+    }),
+  });
+  await expect(mismatched.planner.plan()).resolves.toMatchObject({
+    code: "RECOVERY_EVIDENCE_IDENTITY_MISMATCH",
+    reason: "peer identity mismatch",
+  });
+});
+
+test("saves eligible candidates and blocks histories without quorum", async () => {
+  const nodes = [{ name: "a.example.test" }, { name: "b.example.test" }];
+  const evidence = [
+    { node: "a.example.test", uuid: "cluster", seqno: 8 },
+    { node: "b.example.test", uuid: "cluster", seqno: 7 },
+  ];
+  const eligible = makePlanner({ nodes, collect: async () => ({ evidence }) });
+  await expect(eligible.planner.plan()).resolves.toMatchObject({
+    eligible: true,
+    mode: "bootstrap",
+    winner: { node: "a.example.test" },
+  });
+  expect(eligible.persist).toHaveBeenCalled();
+  expect(eligible.publishEvent).toHaveBeenCalledWith(
+    expect.objectContaining({ type: "recovery.candidate-selected" }),
+  );
+
+  const inactive = makePlanner({
+    nodes: [{ name: "a.example.test" }],
+    collect: async () => ({ evidence: [{ node: "a.example.test", uuid: "cluster", seqno: -1 }] }),
+  });
+  await expect(inactive.planner.plan()).resolves.toMatchObject({
+    mode: "blocked",
+    reason: "no recoverable seqno exists",
+  });
 });
 
 import { createColdRecoveryProtocol } from "../../../../src/cluster/cold-bootstrap/protocol.mjs";

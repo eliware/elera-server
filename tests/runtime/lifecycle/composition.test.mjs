@@ -1,5 +1,11 @@
 import { expect, jest, test } from "@jest/globals";
 import { createSupervisorLifecycle } from "../../../src/runtime/lifecycle/composition.mjs";
+import { createSupervisorErrorHandlers } from "../../../src/runtime/error-wiring.mjs";
+
+test("uses the default lifecycle options and cleans up registered errors", () => {
+  expect(() => createSupervisorLifecycle()).toThrow();
+  createSupervisorErrorHandlers().removeHandlers();
+});
 
 test("composes supervisor error and shutdown lifecycle", () => {
   const result = createSupervisorLifecycle({

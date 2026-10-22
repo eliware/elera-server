@@ -29,3 +29,7 @@ test("ignores absent routing events", () => {
   });
   expect(() => publish()).not.toThrow();
 });
+
+test("uses defaults when no publisher options are supplied", () => {
+  expect(createRoutingPublisher()).toEqual(expect.any(Function));
+});

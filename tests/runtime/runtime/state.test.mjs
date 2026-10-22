@@ -18,3 +18,7 @@ test("creates pending recovery state for an Elera supervisor", () => {
   const result = createRuntimeState({ config: { elera: true }, log: { info: () => {} } });
   expect(result.recoveryState.snapshot().state).toBe("pending");
 });
+
+test("uses an empty options object when runtime settings are omitted", () => {
+  expect(() => createRuntimeState()).toThrow(TypeError);
+});

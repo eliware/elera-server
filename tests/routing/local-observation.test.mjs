@@ -129,3 +129,48 @@ test("uses the root token when no token override is supplied", async () => {
   });
   expect(fetchImpl.mock.calls[0][1].headers.authorization).toBe("Bearer root-token");
 });
+
+test("rejects missing dependencies and invalid runtime identities", async () => {
+  await expect(refreshLocalObservation()).rejects.toThrow("observation store and status reader");
+  await expect(
+    refreshLocalObservation({ observationStore: { upsert: jest.fn() }, getStatus: jest.fn() }),
+  ).rejects.toThrow("valid hostname");
+  await expect(refreshPeerObservations()).rejects.toThrow("observation store and fetch");
+  await expect(
+    refreshPeerObservations({
+      observationStore: { upsert: jest.fn() },
+      fetchImpl: jest.fn(),
+      identity: { name: "invalid" },
+    }),
+  ).rejects.toThrow("valid hostname");
+});
+
+test("validates configured peers and requires exactly one local member", async () => {
+  const options = { identity, observationStore: { upsert: jest.fn() }, fetchImpl: jest.fn() };
+  await expect(refreshPeerObservations({ ...options, members: null })).rejects.toThrow("FQDN");
+  await expect(refreshPeerObservations({ ...options, members: [] })).rejects.toThrow("FQDN");
+  await expect(refreshPeerObservations({ ...options, members: [{}] })).rejects.toThrow("FQDN");
+  await expect(
+    refreshPeerObservations({ ...options, members: [{ name: identity.name, address: "bad" }] }),
+  ).rejects.toThrow("FQDN");
+  await expect(
+    refreshPeerObservations({
+      ...options,
+      members: [{ name: members[1].name, address: members[1].address }],
+    }),
+  ).rejects.toThrow("exactly one");
+});
+
+test("skips observations that do not match the configured peer", async () => {
+  const observationStore = { upsert: jest.fn() };
+  await refreshPeerObservations({
+    identity,
+    members,
+    observationStore,
+    fetchImpl: async () => ({
+      ok: true,
+      json: async () => ({ data: [{ nodeId: "other.example.test", address: members[1].address }] }),
+    }),
+  });
+  expect(observationStore.upsert).not.toHaveBeenCalled();
+});

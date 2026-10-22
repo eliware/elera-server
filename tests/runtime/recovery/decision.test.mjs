@@ -2,6 +2,7 @@ import { expect, jest, test } from "@jest/globals";
 import { recordSupervisorRecoveryDecision } from "../../../src/runtime/recovery/decision.mjs";
 
 test("records recovery evidence, winner, state, and durable decision", async () => {
+  await expect(recordSupervisorRecoveryDecision()).rejects.toThrow();
   const recoveryAudit = { evidence: jest.fn(), winner: jest.fn() };
   const recoveryState = { set: jest.fn() };
   const store = { write: jest.fn() };

@@ -1,9 +1,16 @@
 import { spawn } from "node:child_process";
 
-export function runWsrepRecover(
-  directory,
-  { spawnImpl = spawn, timeoutMs = 30000, setTimer = setTimeout, clearTimer = clearTimeout } = {},
-) {
+export function resolveWsrepRecoverOptions(options = {}) {
+  return {
+    spawnImpl: options.spawnImpl ?? spawn,
+    timeoutMs: options.timeoutMs ?? 30000,
+    setTimer: options.setTimer ?? setTimeout,
+    clearTimer: options.clearTimer ?? clearTimeout,
+  };
+}
+
+export function runWsrepRecover(directory, options) {
+  const { spawnImpl, timeoutMs, setTimer, clearTimer } = resolveWsrepRecoverOptions(options);
   return new Promise((resolve, reject) => {
     const child = spawnImpl(
       "mariadbd",

@@ -7,7 +7,23 @@ import {
 import * as __fixture5_common from "@eliware/common";
 import * as __fixture5_mysql from "@eliware/elera-lib";
 import { expect, jest, test } from "@jest/globals";
-import { main } from "../src/main.mjs";
+
+jest.unstable_mockModule("../src/runtime/application-context.mjs", () => ({
+  createSupervisorApplicationContext: jest.fn(),
+}));
+jest.unstable_mockModule("../src/runtime/recovery/join/wiring.mjs", () => ({
+  createSupervisorRecoveryJoiner: jest.fn(),
+}));
+jest.unstable_mockModule("../src/runtime/startup/coordinator.mjs", () => ({
+  startSupervisor: jest.fn(),
+}));
+
+const [{ main }, contextModule, joinerModule, startupModule] = await Promise.all([
+  import("../src/main.mjs"),
+  import("../src/runtime/application-context.mjs"),
+  import("../src/runtime/recovery/join/wiring.mjs"),
+  import("../src/runtime/startup/coordinator.mjs"),
+]);
 
 const context = () => {
   const recover = jest.fn();
@@ -55,6 +71,24 @@ test("starts the supervisor with the composed runtime", async () => {
   );
   expect(start).toHaveBeenCalledWith(
     expect.objectContaining({ identity: runtime.identity, recoverJoiners: "joiner" }),
+  );
+});
+
+test("uses the default startup dependencies", async () => {
+  jest.clearAllMocks();
+  const runtime = context();
+  contextModule.createSupervisorApplicationContext.mockReturnValue(runtime);
+  joinerModule.createSupervisorRecoveryJoiner.mockReturnValue("default joiner");
+
+  await main();
+
+  expect(contextModule.createSupervisorApplicationContext).toHaveBeenCalledWith({
+    environment: process.env,
+    log: expect.any(Object),
+  });
+  expect(joinerModule.createSupervisorRecoveryJoiner).toHaveBeenCalled();
+  expect(startupModule.startSupervisor).toHaveBeenCalledWith(
+    expect.objectContaining({ environment: process.env, recoverJoiners: "default joiner" }),
   );
 });
 

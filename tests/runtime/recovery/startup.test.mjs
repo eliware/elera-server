@@ -5,3 +5,7 @@ const { prepareSupervisorRecovery } = await import("../../../src/runtime/recover
 test("loads the prepareSupervisorRecovery suite", () => {
   expect(typeof prepareSupervisorRecovery).toBe("function");
 });
+
+test("uses an empty options object when no startup options are supplied", async () => {
+  await expect(prepareSupervisorRecovery()).rejects.toThrow(TypeError);
+});

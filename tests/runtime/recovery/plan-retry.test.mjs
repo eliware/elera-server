@@ -2,6 +2,10 @@ import { expect, jest, test } from "@jest/globals";
 import { resolveRecoveryPlan } from "../../../src/runtime/recovery/plan-retry.mjs";
 
 test("returns an immediately available plan", async () => {
+  await expect(resolveRecoveryPlan()).rejects.toThrow();
+  await expect(
+    resolveRecoveryPlan({ recoveryProtocol: { plan: async () => ({ mode: "join" }) } }),
+  ).resolves.toEqual({ mode: "join" });
   const protocol = { plan: jest.fn(async () => ({ mode: "bootstrap" })), retry: jest.fn() };
   await expect(
     resolveRecoveryPlan({ recoveryProtocol: protocol, startupTimeoutMs: 1 }),

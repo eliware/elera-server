@@ -18,6 +18,10 @@ describe("quorum readiness", () => {
   test("rejects malformed values", () => {
     expect(isQuorumReady({ wsrep_cluster_size: "unknown" }, { expectedSize: 3 })).toBe(false);
   });
+  test("uses default arguments when callers omit the options", () => {
+    expect(isQuorumReady()).toBe(false);
+    expect(isQuorumReady({ wsrep_cluster_size: 1 })).toBe(true);
+  });
   test("rejects missing, negative, and non-numeric cluster sizes", () => {
     expect(isQuorumReady(undefined, { expectedSize: 3 })).toBe(false);
     expect(isQuorumReady({ wsrep_cluster_size: "-1" }, { expectedSize: 3 })).toBe(false);

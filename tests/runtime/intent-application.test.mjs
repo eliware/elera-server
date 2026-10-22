@@ -18,6 +18,11 @@ const setup = (change) => {
   });
   return { apply, processController, intentState, setRestarting };
 };
+
+test("creates an application with default environment helpers", () => {
+  expect(createSupervisorIntentApplication()).toEqual(expect.any(Function));
+});
+
 test("rejects unsafe changes without applying them", async () => {
   const value = setup("unsafe");
   await expect(value.apply({})).rejects.toMatchObject({ code: "UNSAFE_INTENT_CHANGE" });

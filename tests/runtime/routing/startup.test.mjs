@@ -31,3 +31,7 @@ test("creates the routing publisher and starts supervisor cycles", () => {
     expect.objectContaining({ publishRoutingEvent: "publisher" }),
   );
 });
+
+test("uses defaults when routing startup options are omitted", () => {
+  expect(() => startSupervisorRouting()).toThrow("routing startup dependencies");
+});

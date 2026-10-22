@@ -17,6 +17,7 @@ test("verifies connectivity, schema, account, and aggregate results", async () =
   await expect(verifier.all({ database: "billing", user: "worker" })).resolves.toMatchObject({
     verified: true,
   });
+  await expect(verifier.all()).resolves.toMatchObject({ verified: true });
 });
 
 test("reports missing schema and account and escapes quoted names", async () => {

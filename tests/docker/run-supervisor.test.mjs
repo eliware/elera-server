@@ -26,3 +26,7 @@ test("uses failure when the process exits without a code", async () => {
   const { spawn } = runWith("exit", null);
   await expect(runSupervisor("node", [], spawn)).resolves.toEqual({ code: 1 });
 });
+
+test("uses default arguments and reports a missing default-spawn command", async () => {
+  await expect(runSupervisor("elera-command-that-does-not-exist")).resolves.toEqual({ code: 1 });
+});

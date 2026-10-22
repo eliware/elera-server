@@ -67,3 +67,19 @@ test("rejects an observation that conflicts with the authenticated peer identity
   c.peerIdentity = identity;
   await expect(handleObservationRoute(c)).rejects.toMatchObject({ statusCode: 409 });
 });
+test("rejects missing identities and invalid observation addresses", async () => {
+  await expect(
+    handleObservationRoute({ ...ctx("GET", "/api/v1/cluster/observations"), identity: undefined }),
+  ).rejects.toThrow("runtime identity is required");
+  await expect(
+    handleObservationRoute(ctx("POST", "/api/v1/cluster/observations")),
+  ).rejects.toMatchObject({ statusCode: 400, message: "observation nodeId is required" });
+  for (const body of [
+    { nodeId: "invalid-host" },
+    { nodeId: identity.name, address: "other.example.test" },
+  ]) {
+    await expect(
+      handleObservationRoute(ctx("POST", "/api/v1/cluster/observations", body)),
+    ).rejects.toMatchObject({ statusCode: 400 });
+  }
+});

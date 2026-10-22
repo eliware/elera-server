@@ -29,6 +29,24 @@ test("authorizes a valid epoch with all required acknowledgements", async () => 
   expect(persist).toHaveBeenCalledWith(result, existing.epoch);
 });
 
+test("uses default arguments and rejects non-array acknowledgements", async () => {
+  await expect(authorizeRecoveryEpoch()).rejects.toThrow();
+  const existing = epoch();
+  await expect(
+    authorizeRecoveryEpoch(
+      { epoch: existing.epoch, acknowledgements: "invalid" },
+      {
+        read: async () => existing,
+        persist: jest.fn(),
+        now: () => new Date("2026-10-14T00:00:00Z"),
+        publishEvent: jest.fn(),
+        debug: jest.fn(),
+        setCurrent: jest.fn(),
+      },
+    ),
+  ).rejects.toThrow();
+});
+
 import { createColdRecoveryProtocol } from "../../../../src/cluster/cold-bootstrap/protocol.mjs";
 
 const recoveryEvidence = (node, seqno) => ({

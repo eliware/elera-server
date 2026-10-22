@@ -3,6 +3,82 @@ import { createRoutingEventSnapshot } from "../../../src/routing/event/snapshot.
 import { validateRoutingEvent } from "@eliware/elera-lib";
 
 jest.useFakeTimers();
+const validNode = (overrides = {}) => ({
+  nodeId: "node.example.test",
+  clusterId: "cluster-a",
+  state: "Synced",
+  address: "db.example.test",
+  sqlPort: 3306,
+  synced: true,
+  primary: "Primary",
+  health: "ok",
+  observedAt: Date.now(),
+  ...overrides,
+});
+
+test("validates the observation store, runtime identity, and observed node names", () => {
+  expect(() => createRoutingEventSnapshot()).toThrow("observation store");
+  expect(() =>
+    createRoutingEventSnapshot({
+      observationStore: { snapshot: () => [] },
+      nodeIdentity: { name: "bad" },
+    }),
+  ).toThrow("valid hostname");
+  const create = (item) =>
+    createRoutingEventSnapshot({
+      nodeIdentity: { name: "node.example.test" },
+      observationStore: { snapshot: () => [item] },
+    });
+  expect(() => create({ ...validNode(), nodeId: "bad" })()).toThrow("FQDN");
+  expect(() => create({ ...validNode(), address: "bad" })()).toThrow("FQDN");
+});
+
+test("persists an elected writer and reuses healthy routes for five seconds", () => {
+  let now = Date.now();
+  let observations = [validNode()];
+  const set = jest.fn();
+  const snapshot = createRoutingEventSnapshot({
+    nodeIdentity: { name: "node.example.test" },
+    observationStore: { snapshot: () => observations },
+    assignmentStore: { peek: () => undefined, set },
+    environment: { ELERA_CLUSTER_SIZE: "1" },
+    now: () => now,
+  });
+  const healthy = snapshot("app");
+  expect(healthy.context.clusterCondition).toBe("Primary");
+  expect(set).toHaveBeenCalledWith("app", "db.example.test", expect.any(String));
+  observations = [validNode({ synced: false, health: "not-ready" })];
+  now += 1000;
+  expect(snapshot("app").topology.nodes[0].state).toBe("unready");
+  now += 5000;
+  expect(snapshot("app").context.clusterCondition).toBe("Non-Primary");
+});
+
+test("uses node port defaults and retains remote observations without local drain state", () => {
+  const peer = validNode({
+    nodeId: "peer.example.test",
+    address: "peer-db.example.test",
+    sqlPort: null,
+  });
+  const snapshot = createRoutingEventSnapshot({
+    nodeIdentity: { name: "node.example.test" },
+    observationStore: { snapshot: () => [validNode({ sqlPort: null }), peer] },
+    environment: { ELERA_NODE_SQL_PORT: "4406", ELERA_CLUSTER_SIZE: "1" },
+  });
+  expect(
+    snapshot().topology.nodes.map(({ nodeId, sqlPort, draining }) => [nodeId, sqlPort, draining]),
+  ).toEqual([
+    ["node.example.test", 4406, false],
+    ["peer.example.test", 4406, false],
+  ]);
+  const defaultPort = createRoutingEventSnapshot({
+    nodeIdentity: { name: "node.example.test" },
+    observationStore: { snapshot: () => [validNode({ sqlPort: null })] },
+    environment: { ELERA_CLUSTER_SIZE: "1" },
+  });
+  expect(defaultPort().topology.nodes[0].sqlPort).toBe(3306);
+});
+
 test("creates stable versioned routing events and advances on changes", () => {
   const node = {
     nodeId: "node.example.test",
@@ -136,6 +212,8 @@ test("does not surface assignment persistence failures", async () => {
       snapshot: () => [
         {
           nodeId: "node.example.test",
+          clusterId: "cluster-a",
+          state: "Synced",
           synced: true,
           primary: "Primary",
           health: "ok",

@@ -1,6 +1,6 @@
 import { readBody } from "../../http.mjs";
 
-function applicationFrom(url, body = {}, auth = {}) {
+function applicationFrom(url, body, auth) {
   const requested = body.application ?? url?.searchParams?.get("application");
   if (
     requested &&

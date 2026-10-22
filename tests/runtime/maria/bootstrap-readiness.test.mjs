@@ -3,6 +3,53 @@ import { createMariaStartupHarness as base } from "../../../test-fixtures/maria-
 import { startSupervisorMariaDb } from "../../../src/runtime/maria/startup.mjs";
 import { watchMariaDbBootstrapReadiness } from "../../../src/runtime/maria/bootstrap-readiness.mjs";
 jest.useFakeTimers();
+const readinessOptions = (overrides = {}) => ({
+  createWatch: () => async () => ({ ready: false }),
+  health: {},
+  config: { startupTimeoutMs: 100, shutdownTimeoutMs: 10 },
+  startupDecision: { epoch: 1 },
+  generation: 1,
+  recoveryState: { set: jest.fn(), snapshot: () => ({ state: "joining" }) },
+  recoveryAudit: { failure: jest.fn(), completion: jest.fn() },
+  processController: { stop: jest.fn() },
+  log: { error: jest.fn() },
+  identity: { name: "node.example.test" },
+  isCurrent: () => true,
+  ...overrides,
+});
+
+test("ignores stale readiness timeouts, completions, and watcher errors", async () => {
+  let timeout;
+  const staleTimeout = readinessOptions({
+    createWatch: (options) => {
+      timeout = options.onTimeout;
+      return async () => ({ ready: false });
+    },
+    isCurrent: () => false,
+  });
+  watchMariaDbBootstrapReadiness(staleTimeout);
+  await timeout();
+  expect(staleTimeout.recoveryState.set).not.toHaveBeenCalled();
+
+  const staleSuccess = readinessOptions({
+    createWatch: () => async () => ({ ready: true }),
+    isCurrent: () => false,
+  });
+  watchMariaDbBootstrapReadiness(staleSuccess);
+  await Promise.resolve();
+  expect(staleSuccess.recoveryState.set).not.toHaveBeenCalled();
+
+  const completedError = readinessOptions({
+    createWatch: () => async () => {
+      throw new Error("late watcher failure");
+    },
+    recoveryState: { set: jest.fn(), snapshot: () => ({ state: "complete" }) },
+  });
+  watchMariaDbBootstrapReadiness(completedError);
+  await Promise.resolve();
+  expect(completedError.log.error).not.toHaveBeenCalled();
+});
+
 test("uses a one-node view for explicit bootstrap readiness", async () => {
   let watchOptions;
   const value = {

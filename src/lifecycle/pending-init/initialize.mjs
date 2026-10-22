@@ -2,15 +2,9 @@ import { executeSql, runCommand, startPrivateMariaDb } from "./processes.mjs";
 import { initializationSql } from "./sql.mjs";
 export const wait = (delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs));
 export const PENDING_INIT_SOCKET = "/run/mysqld/pending-init.sock";
-export async function initializePendingData({
-  environment = process.env,
-  log = console,
-  run = runCommand,
-  start = startPrivateMariaDb,
-  execute = executeSql,
-  sleep = wait,
-  socket = PENDING_INIT_SOCKET,
-} = {}) {
+export async function initializePendingData(options) {
+  const { environment, log, run, start, execute, sleep, socket } =
+    resolvePendingInitOptions(options);
   const dataDir = environment.MARIADB_DATA_DIR ?? "/var/lib/mysql";
   await run("mariadb-install-db", [
     "--user=mysql",
@@ -35,4 +29,17 @@ export async function initializePendingData({
     await new Promise((resolve) => server.once("exit", resolve));
   }
   log.info?.("Explicit pending initialization completed");
+}
+
+export function resolvePendingInitOptions(options = {}) {
+  return {
+    environment: process.env,
+    log: console,
+    run: runCommand,
+    start: startPrivateMariaDb,
+    execute: executeSql,
+    sleep: wait,
+    socket: PENDING_INIT_SOCKET,
+    ...options,
+  };
 }

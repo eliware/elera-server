@@ -16,6 +16,8 @@ export function createSupervisorTraffic({
   getDb,
   setDrained = () => {},
   fetchImpl = fetch,
+  now = Date.now,
+  sleep = (duration) => new Promise((resolve) => setTimeout(resolve, duration)),
 } = {}) {
   if (
     typeof telemetry?.recordEvent !== "function" ||
@@ -80,12 +82,12 @@ export function createSupervisorTraffic({
     drained = false;
     setDrained(false);
     updateLocalSqlRoute(false);
-    const deadline = Date.now() + Math.max(config.startupTimeoutMs ?? 30000, 30000);
+    const deadline = now() + Math.max(config.startupTimeoutMs ?? 30000, 30000);
     do {
       if (await publishDrainEvent(false)) return;
-      if (Date.now() >= deadline) return;
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    } while (Date.now() < deadline);
+      if (now() >= deadline) return;
+      await sleep(100);
+    } while (now() < deadline);
   };
   return { drain, sqlQuiesce, clusterDrain, publishDrainEvent, recover, getDrained: () => drained };
 }

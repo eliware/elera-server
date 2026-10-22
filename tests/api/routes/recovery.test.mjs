@@ -49,6 +49,7 @@ test("serves recovery status/events and handles confirmed acknowledge/abort", as
 });
 
 test("requires confirmation and ignores unrelated routes", async () => {
+  await expect(handleRecoveryRoute()).resolves.toBe(false);
   const recovery = createRecoveryControl({ state: createRecoveryState() });
   const auth = { root: true };
   await expect(

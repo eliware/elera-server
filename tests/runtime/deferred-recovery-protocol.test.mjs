@@ -15,3 +15,11 @@ test("reports structured unavailability after the initialization deadline", asyn
     createDeferredRecoveryProtocol(() => undefined, { timeoutMs: 1, intervalMs: 1 }).plan(),
   ).rejects.toMatchObject({ code: "RECOVERY_UNAVAILABLE", statusCode: 503 });
 });
+
+test("uses default timeout and interval values when options are omitted", async () => {
+  jest.useFakeTimers();
+  const pending = createDeferredRecoveryProtocol(undefined).plan();
+  jest.advanceTimersByTime(5001);
+  await expect(pending).rejects.toMatchObject({ code: "RECOVERY_UNAVAILABLE" });
+  jest.useRealTimers();
+});

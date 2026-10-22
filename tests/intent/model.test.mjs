@@ -33,6 +33,21 @@ describe("supervisor intent model", () => {
       expect(() => validateIntent(value)).toThrow("invalid supervisor intent");
     }
   });
+  test("rejects invalid member fields and duplicate member addresses", () => {
+    for (const member of [
+      { address: "node.example.test" },
+      { name: "node.example.test" },
+      { name: "node", address: "node" },
+    ]) {
+      const value = structuredClone(fixture);
+      value.cluster.members = [member];
+      expect(() => validateIntent(value)).toThrow("invalid supervisor intent");
+    }
+    const duplicate = structuredClone(fixture);
+    duplicate.cluster.members.push({ ...duplicate.cluster.members[0] });
+    expect(() => validateIntent(duplicate)).toThrow("cluster.members names must be unique");
+    expect(() => validateIntent(duplicate)).toThrow("cluster.members addresses must be unique");
+  });
   test("loads defaults and rejects malformed JSON or intent", () => {
     const identity = { name: "node.example.test" };
     expect(defaultIntent({}, identity).cluster.name).toBe("local-elera");

@@ -25,8 +25,9 @@ export function loadSupervisorConfig(
   environment = process.env,
   intent = undefined,
   identity = undefined,
+  identityProvider = runtimeIdentity,
 ) {
-  identity ??= runtimeIdentity();
+  identity ??= identityProvider();
   if (!identity?.name) throw new Error("runtime identity is required for supervisor configuration");
   intent ??= persistedIntent(environment) ?? loadIntent(environment, identity);
   validateIntent(intent);
@@ -40,15 +41,6 @@ export function loadSupervisorConfig(
       { code: "RUNTIME_IDENTITY_MEMBERSHIP_MISMATCH", statusCode: 400 },
     );
   }
-  const local = localMembers[0];
-  if (local.address !== identity.name) {
-    throw Object.assign(
-      new Error(
-        `runtime hostname ${identity.name} has configured address ${local.address}. Configured address must equal the hostname-derived FQDN ${identity.name}`,
-      ),
-      { code: "RUNTIME_IDENTITY_ADDRESS_MISMATCH", statusCode: 400 },
-    );
-  }
   const number = (name, fallback) => {
     const value = Number(environment[name] ?? fallback);
     if (!Number.isInteger(value) || value < 1 || value > 65535)
@@ -57,13 +49,13 @@ export function loadSupervisorConfig(
   };
   return Object.freeze({
     httpPort: number("ELERA_HTTP_PORT", 8080),
-    clusterSize: intent?.cluster?.members?.length ?? 1,
+    clusterSize: intent.cluster.members.length,
     timeoutMs: Number(environment.ELERA_QUERY_TIMEOUT_MS ?? 5000),
     drainTimeoutMs: clientDrainTimeout(environment.ELERA_DRAIN_TIMEOUT_MS ?? 45000),
     shutdownTimeoutMs: Number(environment.ELERA_SHUTDOWN_TIMEOUT_MS ?? 60000),
     startupTimeoutMs: Number(environment.ELERA_STARTUP_TIMEOUT_MS ?? 30000),
     dataDir: intent?.mariadb?.dataDir ?? environment.MARIADB_DATA_DIR ?? "/var/lib/mysql",
-    elera: (intent?.cluster?.members?.length ?? 1) > 1,
+    elera: intent.cluster.members.length > 1,
     intent,
     runtimeIdentity: identity,
     environment,

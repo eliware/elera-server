@@ -136,3 +136,62 @@ test("uses the default unavailable code for an untyped evidence failure", async 
     code: "RECOVERY_EVIDENCE_UNAVAILABLE",
   });
 });
+
+test("authorizes a recovery epoch and preserves identity mismatch refusals on retry", async () => {
+  const stored = { value: undefined };
+  const debug = jest.fn();
+  const item = {
+    node: "a.example.test",
+    uuid: "cluster",
+    seqno: 1,
+    savedSeqno: 1,
+    recoveredSeqno: 1,
+    safeToBootstrap: false,
+    active: false,
+    generation: 1,
+    observedAt: new Date().toISOString(),
+    dataDirectory: { valid: true },
+  };
+  const protocol = createColdRecoveryProtocol({
+    nodes: [{ name: "a.example.test", local: true }],
+    localEvidence: async () => item,
+    fetchEvidence: async () => item,
+    store: {
+      async read() {
+        return stored.value;
+      },
+      async write(value) {
+        stored.value = value;
+        return value;
+      },
+    },
+    log: { debug },
+  });
+  const plan = await protocol.plan();
+  await expect(
+    protocol.authorize({ epoch: plan.epoch, acknowledgements: ["a.example.test"] }),
+  ).resolves.toMatchObject({ phase: "authorized" });
+  expect(debug).toHaveBeenCalled();
+
+  const mismatched = createColdRecoveryProtocol({
+    nodes: [{ name: "a.example.test", local: true }],
+    localEvidence: async () => {
+      throw Object.assign(new Error("evidence identity mismatch"), {
+        code: "RECOVERY_EVIDENCE_IDENTITY_MISMATCH",
+      });
+    },
+    fetchEvidence: async () => undefined,
+    store: {
+      async read() {},
+      async write(value) {
+        return value;
+      },
+    },
+  });
+  const refusal = await mismatched.plan();
+  expect(refusal.code).toBe("RECOVERY_EVIDENCE_IDENTITY_MISMATCH");
+  await expect(mismatched.retry()).resolves.toMatchObject({
+    code: "RECOVERY_EVIDENCE_IDENTITY_MISMATCH",
+    phase: "blocked",
+  });
+});

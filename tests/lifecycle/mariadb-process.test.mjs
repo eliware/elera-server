@@ -45,7 +45,7 @@ test("MariaDB process starts and stops idempotently", async () => {
   await process.start();
   expect(process.child).toBe(child);
   expect(process.stopping).toBe(false);
-  await process.stop(100);
+  await process.stop();
   expect(process.stopping).toBe(true);
   await process.stop(100);
   expect(spawn).toHaveBeenCalledTimes(3);

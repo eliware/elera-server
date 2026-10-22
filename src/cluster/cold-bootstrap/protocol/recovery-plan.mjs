@@ -26,7 +26,9 @@ export function createRecoveryPlanner({
     let evidence;
     let failures = [];
     try {
-      ({ evidence, failures } = await collect());
+      const collected = await collect();
+      evidence = collected.evidence;
+      failures = collected.failures ?? [];
     } catch (error) {
       return blocked({
         reason: error.message,

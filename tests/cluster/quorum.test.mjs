@@ -43,6 +43,11 @@ test("rejects stale, conflicting, and insufficient observations", () => {
   ).toBe("conflicting-primaries");
 });
 test("handles empty observations and explicit quorum sizing", () => {
+  expect(evaluateQuorum([])).toMatchObject({
+    quorum: false,
+    required: 1,
+    reason: "insufficient-fresh-observations",
+  });
   expect(evaluateQuorum([], { expectedSize: 0 })).toMatchObject({
     quorum: false,
     required: 1,

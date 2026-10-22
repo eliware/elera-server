@@ -1,6 +1,10 @@
 import { expect, jest, test } from "@jest/globals";
 import { createSupervisorColdBootstrap } from "../../../src/runtime/cold/bootstrap-wiring.mjs";
 
+test("validates coordinator dependencies when options are omitted", () => {
+  expect(() => createSupervisorColdBootstrap()).toThrow("complete FQDN node inventory");
+});
+
 test("wires local and remote cold-bootstrap execution", async () => {
   let options;
   const fetchImpl = jest.fn(async () => ({ ok: true, json: async () => ({ completed: true }) }));

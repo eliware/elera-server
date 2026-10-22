@@ -5,18 +5,19 @@ import { startPendingInitRuntime } from "../lifecycle/pending-init/runtime.mjs";
 import { initializePendingData } from "../lifecycle/pending-init/initialize.mjs";
 import { runSupervisor } from "./run-supervisor.mjs";
 
-export async function startMariaDbEntrypoint({
-  environment = process.env,
-  exists = pathExists,
-  readDirectory = readdir,
-  write = writeFile,
-  startPending = startPendingInitRuntime,
-  initialize = initializePendingData,
-  runNode: run = runNode,
-  runSupervisor: supervise = runSupervisor,
-  exit = process.exit,
-  logError = console.error,
-} = {}) {
+export async function startMariaDbEntrypoint(options) {
+  const {
+    environment,
+    exists,
+    readDirectory,
+    write,
+    startPending,
+    initialize,
+    runNode: run,
+    runSupervisor: supervise,
+    exit,
+    logError,
+  } = resolveEntrypointOptions(options);
   const datadir = environment.MARIADB_DATA_DIR ?? "/var/lib/mysql";
   if (!(await exists(`${datadir}/mysql`))) {
     const entries = await readDirectory(datadir);
@@ -35,6 +36,22 @@ export async function startMariaDbEntrypoint({
   if (result.code !== 0) return exit(result.code);
 }
 
+export function resolveEntrypointOptions(options = {}) {
+  return {
+    environment: process.env,
+    exists: pathExists,
+    readDirectory: readdir,
+    write: writeFile,
+    startPending: startPendingInitRuntime,
+    initialize: initializePendingData,
+    runNode,
+    runSupervisor,
+    exit: process.exit,
+    logError: console.error,
+    ...options,
+  };
+}
+
 async function pathExists(path) {
   try {
     await access(path);
@@ -45,7 +62,7 @@ async function pathExists(path) {
 }
 export function runNode(file, ...args) {
   return new Promise((resolve, reject) => {
-    const child = spawn("node", [file, ...args], { stdio: ["ignore", "pipe", "inherit"] });
+    const child = spawn("node", [file, ...args], { stdio: ["ignore", "pipe", "ignore"] });
     let out = "";
     child.stdout.on("data", (data) => (out += data));
     child.once("error", reject);
@@ -59,5 +76,8 @@ function fail(message, logError) {
   return 1;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
-  await startMariaDbEntrypoint();
+export async function runIfEntrypoint(moduleUrl, scriptPath, start = startMariaDbEntrypoint) {
+  if (scriptPath && moduleUrl === pathToFileURL(scriptPath).href) await start();
+}
+
+await runIfEntrypoint(import.meta.url, process.argv[1]);

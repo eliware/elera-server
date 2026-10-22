@@ -62,7 +62,7 @@ export async function handleRoutingInspection({
   }
   if (!routes.balanced.length) {
     const status = await optionalStatus(getStatus);
-    if (status?.ready && identity?.name) {
+    if (status?.ready) {
       const node = {
         host: identity.name,
         port: Number(environment?.ELERA_NODE_SQL_PORT ?? 3306),

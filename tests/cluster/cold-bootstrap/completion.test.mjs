@@ -42,6 +42,7 @@ test("waits for matching completion and rejects a different epoch", async () => 
   expect(fetchImpl).toHaveBeenCalledTimes(2);
 });
 test("handles failed responses, malformed responses, and fetch errors", async () => {
+  await expect(waitForRecoveryCompletion()).rejects.toThrow("dependencies");
   const responses = [
     { ok: false },
     {

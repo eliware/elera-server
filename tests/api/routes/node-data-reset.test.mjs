@@ -7,6 +7,10 @@ const request = (body) => ({
   },
 });
 test("requires root auth and returns reset results", async () => {
+  await expect(handleNodeDataResetRoute()).resolves.toBe(false);
+  await expect(
+    handleNodeDataResetRoute({ method: "GET", path: "/api/v1/node/data/reset" }),
+  ).resolves.toBe(false);
   const nodeDataReset = {
     reset: jest
       .fn()

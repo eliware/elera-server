@@ -63,12 +63,37 @@ test("rejects unsafe lifecycle actions and non-FQDN identities", () => {
 });
 
 test("covers lifecycle rejection reasons and eligible leave/recovery", () => {
+  expect(planLifecycle("bootstrap")).toMatchObject({
+    eligible: false,
+    reason: "Elera mode is disabled",
+  });
   expect(
     planLifecycle("bootstrap", { enabled: true, ready: true, nodeId: local }).reason,
   ).toContain("already");
   expect(
     planLifecycle("bootstrap", { enabled: true, ready: false, quorum: true, nodeId: local }).reason,
   ).toContain("quorum");
+  expect(
+    planLifecycle("bootstrap", {
+      enabled: true,
+      ready: false,
+      quorum: false,
+      nodeId: local,
+      state: "Initialized",
+    }).reason,
+  ).toContain("initialized data");
+  expect(
+    planLifecycle("join", { enabled: true, ready: false, quorum: true, nodeId: local }).reason,
+  ).toContain("target identity");
+  expect(
+    planLifecycle("recover", {
+      enabled: true,
+      ready: false,
+      quorum: true,
+      nodeId: local,
+      target: local,
+    }).reason,
+  ).toContain("must not be the local node");
   expect(
     planLifecycle("join", { enabled: true, ready: true, quorum: true, nodeId: local, target: peer })
       .reason,

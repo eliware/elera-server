@@ -79,6 +79,43 @@ jest.unstable_mockModule("../../../src/runtime/server-lifecycle.mjs", () => ({
 const { createSupervisorEntryComposition } =
   await import("../../../src/runtime/entry/composition.mjs");
 
+const minimalOptions = {
+  config: { dataDir: "/data" },
+  identity: { name: "node.example.test" },
+  telemetry: { summary: () => ({}), details: () => ({}) },
+  recoveryState: { snapshot: () => ({}) },
+  getDb: () => undefined,
+  setDrained: () => {},
+  getDrained: () => false,
+  getMariaProcess: () => undefined,
+};
+
+test("validates entry dependencies and supplies default cold-state callbacks", () => {
+  expect(() => createSupervisorEntryComposition()).toThrow();
+  expect(() => createSupervisorEntryComposition({ ...minimalOptions, telemetry: {} })).toThrow(
+    "entry composition requires validated config",
+  );
+  expect(() =>
+    createSupervisorEntryComposition({ ...minimalOptions, identity: { name: "invalid" } }),
+  ).toThrow("entry composition requires validated config");
+  expect(() => createSupervisorEntryComposition({ ...minimalOptions, getDb: undefined })).toThrow(
+    "entry composition requires validated config",
+  );
+  expect(() =>
+    createSupervisorEntryComposition({ ...minimalOptions, setDrained: undefined }),
+  ).toThrow("entry composition lifecycle dependencies");
+  expect(() =>
+    createSupervisorEntryComposition({ ...minimalOptions, getDrained: undefined }),
+  ).toThrow("entry composition lifecycle dependencies");
+  expect(() =>
+    createSupervisorEntryComposition({ ...minimalOptions, getMariaProcess: undefined }),
+  ).toThrow("entry composition lifecycle dependencies");
+  const result = createSupervisorEntryComposition(minimalOptions);
+  expect(result).toBeDefined();
+  expect(captured.control.coldState).toBeDefined();
+  expect(captured.control.applyIntent({ value: true })).toEqual({ value: true });
+});
+
 test("composes collaborators and forwards live runtime dependencies", async () => {
   const servers = [];
   let database;

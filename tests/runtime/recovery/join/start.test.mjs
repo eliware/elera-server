@@ -69,3 +69,18 @@ test("refuses a join when runtime reports not ready", async () => {
     }),
   ).rejects.toMatchObject({ code: "JOINER_NOT_READY", statusCode: 409 });
 });
+
+test("uses an empty options object when no join request is supplied", async () => {
+  await expect(startAuthorizedRecoveryJoin()).rejects.toMatchObject({
+    code: "RECOVERY_JOIN_WINNER_REQUIRED",
+  });
+});
+
+test("adds a winner address when startup arguments omit one", async () => {
+  const value = base();
+  value.args = [];
+  await startAuthorizedRecoveryJoin(value);
+  expect(value.mariaProcess.start).toHaveBeenCalledWith([
+    "--wsrep-cluster-address=gcomm://node-a.example.test",
+  ]);
+});

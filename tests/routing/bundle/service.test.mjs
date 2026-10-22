@@ -9,6 +9,13 @@ test("builds the persistent assignment store from configured paths", () => {
     observationStore: { snapshot: () => [] },
     identity: { name: "node.example.test" },
   };
+  expect(() => createProductionRoutingBundleService()).toThrow("managed metadata");
+  expect(() =>
+    createProductionRoutingBundleService({
+      managed: dependencies.managed,
+      observationStore: dependencies.observationStore,
+    }),
+  ).toThrow("runtime identity");
   expect(
     createProductionRoutingBundleService({
       ...dependencies,

@@ -39,6 +39,13 @@ test("rejects SQL hostname resolution failures and invalid names", () => {
 });
 
 test("uses the platform hostname resolver when no resolver is supplied", () => {
+  expect(nodeAddress()).toBe("node.example.test");
+  expect(clientSqlAddress()).toBe("node.example.test");
   expect(clientSqlAddress({})).toBe("node.example.test");
   expect(execFileSync).toHaveBeenCalledWith("hostname", ["-f"], { encoding: "utf8" });
+});
+
+test("rejects non-function hostname resolvers", () => {
+  expect(() => nodeAddress({}, null)).toThrow("hostname resolver must be a function");
+  expect(() => clientSqlAddress({}, null)).toThrow("FQDN resolver must be a function");
 });

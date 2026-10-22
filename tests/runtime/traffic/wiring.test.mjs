@@ -181,7 +181,7 @@ test("stops recovery polling when the deadline expires", async () => {
     telemetry: { recordEvent: jest.fn() },
     identity: { name: "node-a.example.test" },
     config: {
-      startupTimeoutMs: 0,
+      startupTimeoutMs: 30050,
       shutdownTimeoutMs: 10,
       drainTimeoutMs: 10,
       intent: { cluster: { members: [{ name: "node-a.example.test" }] } },
@@ -193,8 +193,36 @@ test("stops recovery polling when the deadline expires", async () => {
     getDb: () => undefined,
   });
   const pending = traffic.recover();
-  await jest.advanceTimersByTimeAsync(30000);
+  await jest.advanceTimersByTimeAsync(30100);
   await pending;
   expect(traffic.getDrained()).toBe(false);
   jest.useRealTimers();
+});
+
+test("rejects missing traffic wiring dependencies", () => {
+  expect(() => createSupervisorTraffic()).toThrow("traffic wiring requires");
+});
+
+test("stops recovery when the injected clock reaches its deadline", async () => {
+  const clock = [0, 29900, 29900, 30100];
+  let tick = 0;
+  const traffic = createSupervisorTraffic({
+    telemetry: { recordEvent: jest.fn() },
+    identity: { name: "node-a.example.test" },
+    config: {
+      startupTimeoutMs: 30000,
+      shutdownTimeoutMs: 10,
+      drainTimeoutMs: 10,
+      intent: { cluster: { members: [{ name: "node-a.example.test" }] } },
+    },
+    health: { status: async () => ({ ready: false }) },
+    routingBus: { publish: jest.fn() },
+    log: { info: jest.fn() },
+    environment: {},
+    getDb: () => undefined,
+    now: () => clock[Math.min(tick++, clock.length - 1)],
+    sleep: async () => {},
+  });
+  await traffic.recover();
+  expect(tick).toBe(4);
 });

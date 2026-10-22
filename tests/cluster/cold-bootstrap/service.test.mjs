@@ -3,6 +3,7 @@ import { createColdBootstrapService } from "../../../src/cluster/cold-bootstrap/
 import { handleClusterRoute } from "../../../src/api/routes/cluster.mjs";
 
 test("requires configured cluster dependencies", () => {
+  expect(() => createColdBootstrapService()).toThrow("cold bootstrap dependencies are required");
   expect(() => createColdBootstrapService({})).toThrow("cold bootstrap dependencies are required");
 });
 test("serves evidence through the cluster route", async () => {

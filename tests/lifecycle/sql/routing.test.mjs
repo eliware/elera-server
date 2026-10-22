@@ -23,6 +23,7 @@ test("updates primary and balanced client availability during drain", () => {
   );
 });
 test("tolerates absent clients and logs client failures", () => {
+  expect(() => createSqlDrainIntegration()(false)).not.toThrow();
   expect(() => createSqlDrainIntegration({ getClient: () => undefined })(true)).not.toThrow();
   const warn = jest.fn();
   const client = {

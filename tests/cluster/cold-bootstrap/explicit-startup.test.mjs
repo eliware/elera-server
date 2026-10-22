@@ -14,6 +14,7 @@ test("creates an explicit join decision with bootstrap authority", () => {
 });
 
 test("ignores ordinary startup without an explicit handoff", () => {
+  expect(explicitStartupDecision()).toBeUndefined();
   expect(explicitStartupDecision({}, "elera-0.example.test")).toBeUndefined();
 });
 

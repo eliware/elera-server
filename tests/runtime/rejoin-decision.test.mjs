@@ -29,6 +29,18 @@ test("blocks when remote recovery does not complete", async () => {
   expect(value.recoveryState.set).toHaveBeenCalled();
 });
 test("leaves other decisions unchanged", async () => {
+  await expect(resolveSupervisorRejoin()).rejects.toThrow();
+  await expect(resolveSupervisorRejoin({ decision: { mode: "join" } })).resolves.toEqual({
+    mode: "join",
+  });
+  await expect(
+    resolveSupervisorRejoin({
+      decision: { mode: "bootstrap", localWinner: false, winner: "node-b.example.test" },
+      members: [],
+      config: {},
+      recoveryState: { set: jest.fn() },
+    }),
+  ).resolves.toMatchObject({ mode: "blocked" });
   const decision = { mode: "join", winner: "node-a.example.test" };
   await expect(
     resolveSupervisorRejoin({ ...base, decision, waitForCompletion: jest.fn() }),

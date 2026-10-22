@@ -1,6 +1,22 @@
 import { expect, jest, test } from "@jest/globals";
 import { createSupervisorProcess } from "../../src/runtime/process-wiring.mjs";
 
+test("uses the production process and bootstrap factories by default", () => {
+  expect(() => createSupervisorProcess()).toThrow();
+  const result = createSupervisorProcess({
+    args: ["--user=mysql"],
+    config: { timeoutMs: 1000 },
+    log: {},
+    recoveryState: { set: jest.fn() },
+    recoveryAudit: { failure: jest.fn() },
+    isRestarting: () => false,
+    setRestarting: jest.fn(),
+    onFatal: jest.fn(),
+  });
+  expect(result.processController.start).toEqual(expect.any(Function));
+  expect(result.bootstrapLocal).toEqual(expect.any(Function));
+});
+
 test("creates process and cold-bootstrap wiring with shared restart state", () => {
   const recoveryState = { set: jest.fn() };
   const recoveryAudit = { failure: jest.fn() };

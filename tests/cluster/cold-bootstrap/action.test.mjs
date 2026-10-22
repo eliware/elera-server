@@ -2,6 +2,9 @@ import { expect, jest, test } from "@jest/globals";
 import { createColdBootstrapAction } from "../../../src/cluster/cold-bootstrap/action.mjs";
 
 test("requires action dependencies", () => {
+  expect(() => createColdBootstrapAction()).toThrow(
+    "cold bootstrap action dependencies are required",
+  );
   expect(() => createColdBootstrapAction({})).toThrow(
     "cold bootstrap action dependencies are required",
   );

@@ -42,3 +42,21 @@ test("preserves a declared clustered environment intent during fresh startup", a
   });
   expect(received.SUPERVISOR_INTENT_JSON).toContain('"members"');
 });
+
+test("validates startup intent dependencies and shared identity", async () => {
+  await expect(loadStartupIntent()).rejects.toThrow("startup intent requires");
+  await expect(
+    loadStartupIntent({
+      intentState: { read: async () => structuredClone(fixture) },
+      loadEnvironmentIntent: async () => fixture,
+      identity: { name: "node-a" },
+    }),
+  ).rejects.toThrow("startup intent requires");
+  await expect(
+    loadStartupIntent({
+      intentState: { read: async () => structuredClone(fixture) },
+      loadEnvironmentIntent: async () => fixture,
+      identity: { name: "other.example.test" },
+    }),
+  ).rejects.toMatchObject({ code: "RUNTIME_IDENTITY_MEMBERSHIP_MISMATCH", statusCode: 400 });
+});

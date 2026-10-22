@@ -1,5 +1,67 @@
 import { expect, jest, test } from "@jest/globals";
-import { createRecoveryEvidenceService } from "../../../src/runtime/recovery/evidence-service.mjs";
+import {
+  createRecoveryEvidenceService,
+  startRecoveryEvidenceService,
+} from "../../../src/runtime/recovery/evidence-service.mjs";
+
+test("creates default evidence dependencies without starting the listener", async () => {
+  expect(() => createRecoveryEvidenceService()).toThrow("FQDN identity");
+  const service = createRecoveryEvidenceService({
+    identity: { name: "node-a.example.test" },
+    dataDir: "/data",
+    httpPort: 8080,
+    token: "token",
+    mariaProcess: { child: { exitCode: null } },
+  });
+  expect(service.evidence).toEqual(expect.any(Function));
+  expect(service.routes).toBeDefined();
+  await service.server.close();
+});
+
+test("starts evidence routes on a unified listener", async () => {
+  const evidence = jest.fn();
+  let mounted;
+  const service = await startRecoveryEvidenceService({
+    options: {
+      identity: { name: "node-a.example.test" },
+      dataDir: "/data",
+      httpPort: 8080,
+      createEvidence: () => evidence,
+      createCompletion: () => ({}),
+      createLease: () => ({}),
+    },
+    unifiedListener: true,
+    setStartupHandler: (routes) => {
+      mounted = routes;
+    },
+    identity: { name: "node-a.example.test" },
+    httpPort: 8080,
+    log: { debug: jest.fn() },
+  });
+  expect(service.server).toBeUndefined();
+  expect(mounted).toBe(service.routes);
+});
+
+test("starts the dedicated evidence listener", async () => {
+  const server = { listen: jest.fn() };
+  const log = { debug: jest.fn() };
+  await startRecoveryEvidenceService({
+    options: {
+      identity: { name: "node-a.example.test" },
+      dataDir: "/data",
+      httpPort: 8080,
+      createEvidence: () => ({}),
+      createCompletion: () => ({}),
+      createLease: () => ({}),
+      createServer: () => server,
+    },
+    identity: { name: "node-a.example.test" },
+    httpPort: 8080,
+    log,
+  });
+  expect(server.listen).toHaveBeenCalled();
+  expect(log.debug).toHaveBeenCalled();
+});
 
 test("composes evidence, completion, lease, and server dependencies", () => {
   const evidence = { collect: jest.fn() };

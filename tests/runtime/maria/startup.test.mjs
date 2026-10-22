@@ -3,10 +3,26 @@ import { createMariaStartupHarness as base } from "../../../test-fixtures/maria-
 import { startSupervisorMariaDb as start } from "../../../src/runtime/maria/startup.mjs";
 jest.useFakeTimers();
 test("refuses MariaDB start without recovery authority", () => {
+  expect(() => start()).toThrow("startup dependencies");
   const value = base();
   start({ ...value, shouldStart: () => false });
   expect(value.processController.start).not.toHaveBeenCalled();
   expect(value.log.warn).toHaveBeenCalled();
+});
+test("validates recovery dependencies and suppresses stale generations", async () => {
+  const value = base();
+  expect(() => start({ ...value, recoveryState: {} })).toThrow("recovery state and audit");
+  expect(() => start({ ...value, recoveryAudit: {} })).toThrow("recovery state and audit");
+  const stale = {
+    ...value,
+    startupDecision: { mode: "join", generation: "current" },
+    recoveryState: { set: jest.fn(), snapshot: () => ({ generation: "old" }) },
+    shouldStart: () => true,
+    createWatch: () => async () => ({ ready: true }),
+  };
+  start(stale);
+  await jest.advanceTimersByTimeAsync(0);
+  expect(stale.recoveryState.set).not.toHaveBeenCalledWith("complete", expect.anything());
 });
 test("starts explicitly authorized local bootstrap", async () => {
   const value = {

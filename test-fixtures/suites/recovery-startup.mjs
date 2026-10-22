@@ -38,6 +38,7 @@ jest.unstable_mockModule("../../src/cluster/cold-bootstrap/startup/evidence/serv
 }));
 jest.unstable_mockModule("../../src/runtime/recovery/evidence-service.mjs", () => ({
   startRecoveryEvidenceService: async (options) => {
+    options.options.getMariaProcess?.();
     if (options.unifiedListener) options.setStartupHandler?.("routes");
     else await listen();
     return {
@@ -86,8 +87,7 @@ test("coordinates Elera recovery and closes evidence server after non-bootstrap 
     recoveryState: { set },
     recoveryAudit: { event: async () => {} },
     log: {},
-    environment: { ROOT_TOKEN: "token" },
-    mariaProcess: { child: { exitCode: 1 } },
+    mariaProcess: { mariaProcess: { child: { exitCode: 1 } } },
   });
   expect(result.args).toEqual(["--recovered"]);
   expect(set).toHaveBeenCalledWith("collecting-evidence");

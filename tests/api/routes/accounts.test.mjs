@@ -175,6 +175,47 @@ test("imports accounts with omitted account and grant collections", async () => 
     }),
   ).resolves.toBe(true);
 });
+test("imports a valid grant statement and accepts an omitted account list", async () => {
+  const statements = [];
+  const db = { query: async (sql) => (statements.push(sql), [[]]) };
+  await expect(
+    handleAccountRoute({
+      method: "POST",
+      path: "/api/v1/accounts/import",
+      request: request({
+        confirm: true,
+        accounts: [{ user: "app", grants: ["GRANT SELECT ON `db`.* TO 'app'@'%'"] }],
+      }),
+      response: response(),
+      db,
+    }),
+  ).resolves.toBe(true);
+  expect(statements).toContain("GRANT SELECT ON `db`.* TO 'app'@'%'");
+
+  await expect(
+    handleAccountRoute({
+      method: "POST",
+      path: "/api/v1/accounts/import",
+      request: request({ confirm: true }),
+      response: response(),
+      db,
+    }),
+  ).resolves.toBe(true);
+});
+test("rejects grant statements with SQL comments", async () => {
+  await expect(
+    handleAccountRoute({
+      method: "POST",
+      path: "/api/v1/accounts/import",
+      request: request({
+        confirm: true,
+        accounts: [{ user: "app", grants: ["GRANT SELECT ON db.* TO app -- unsafe"] }],
+      }),
+      response: response(),
+      db: { query: async () => [[]] },
+    }),
+  ).rejects.toMatchObject({ statusCode: 400, message: "invalid grant statement" });
+});
 test("returns healthy when account verification finds grants", async () => {
   const out = response();
   await expect(

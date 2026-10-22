@@ -26,7 +26,7 @@ export async function recoverJoinersSequentially({
   )
     throw new TypeError("sequential joiner recovery dependencies and FQDN joiners are required");
   const completed = [];
-  const currentEpoch = () => recoveryState.snapshot?.().epoch;
+  const currentEpoch = () => recoveryState.snapshot?.()?.epoch;
   recoveryState.set("joining", { total: joiners.length, epoch });
   for (const joiner of joiners) {
     try {

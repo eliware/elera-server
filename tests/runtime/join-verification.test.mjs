@@ -2,6 +2,7 @@ import { expect, jest, test } from "@jest/globals";
 import { verifySupervisorJoin } from "../../src/runtime/join-verification.mjs";
 
 test("ignores non-join startup states", async () => {
+  expect(verifySupervisorJoin()).toBe(false);
   expect(verifySupervisorJoin({ elera: false, mode: "join", sqlReady: true })).toBe(false);
 });
 

@@ -24,9 +24,7 @@ export function createSupervisorCluster({
     !Array.isArray(config?.intent?.cluster?.members) ||
     !config.intent.cluster.members.some((member) => member.name === identity.name)
   )
-    throw new Error(
-      `runtime cluster identity ${identity?.name ?? "<missing>"} is not a configured member`,
-    );
+    throw new Error(`runtime cluster identity ${identity.name} is not a configured member`);
   const operations = createClusterOperations({
     query,
     processController,

@@ -103,6 +103,7 @@ test("uses local fallback when no eligible observations remain", async () => {
   await expect(handleRoutingRoute(noFallback)).resolves.toBe(true);
 });
 test("returns false for unrelated routing requests", async () => {
+  await expect(handleRoutingRoute()).rejects.toThrow("runtime identity is required");
   expect(await handleRoutingRoute(context("GET", "/other"))).toBe(false);
   expect(await handleRoutingRoute(context("PUT", "/api/v1/routes"))).toBe(false);
 });

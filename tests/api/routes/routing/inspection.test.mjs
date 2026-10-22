@@ -156,3 +156,103 @@ test("uses seeded and cached routes and refreshes from peers", async () => {
   peer.observationStore.snapshot = () => [node];
   await handleRoutingRoute(peer);
 });
+
+test("caches recent routes while observations recover", async () => {
+  const identity = { name: "cache.example.test" };
+  let observations = [{ ...node, nodeId: identity.name, address: identity.name }];
+  const response = { json: jest.fn() };
+  const inspect = () =>
+    handleRoutingInspection({
+      url: new URL("http://localhost/api/v1/routes?application=cache-coverage"),
+      response,
+      identity,
+      observationStore: { snapshot: () => observations },
+      environment: {},
+    });
+
+  await inspect();
+  observations = [];
+  await inspect();
+
+  expect(response.json.mock.calls[1][1].data.balanced).toHaveLength(1);
+});
+
+test("handles missing identities, stores, and status providers", async () => {
+  await expect(handleRoutingInspection()).rejects.toThrow("runtime identity is required");
+  for (const observationStore of [undefined, {}, { snapshot: () => null }]) {
+    const response = { json: jest.fn() };
+    await expect(
+      handleRoutingInspection({
+        url: new URL("http://localhost/api/v1/routes"),
+        response,
+        identity: { name: "sparse.example.test" },
+        observationStore,
+        getStatus: async () => {
+          throw new Error("status unavailable");
+        },
+        environment: undefined,
+      }),
+    ).resolves.toBe(true);
+  }
+  await expect(
+    handleRoutingInspection({
+      url: new URL("http://localhost/api/v1/routes"),
+      response: { json: jest.fn() },
+      identity: { name: "no-status.example.test" },
+      observationStore: {},
+      environment: {},
+    }),
+  ).resolves.toBe(true);
+});
+
+test("uses the default local SQL port when the environment is absent", async () => {
+  const response = { json: jest.fn() };
+  await handleRoutingInspection({
+    url: new URL("http://localhost/api/v1/routes"),
+    response,
+    identity: { name: "fallback.example.test" },
+    observationStore: { snapshot: () => [] },
+    getStatus: async () => ({ ready: true }),
+  });
+  expect(response.json.mock.calls[0][1].data.primary[0].port).toBe(3306);
+});
+
+test("refreshes peer observations before local fallback", async () => {
+  const identity = { name: "peer-a.example.test" };
+  const observations = [];
+  const response = { json: jest.fn() };
+  await expect(
+    handleRoutingInspection({
+      url: new URL("http://localhost/api/v1/routes?application=peer-coverage"),
+      response,
+      identity,
+      observationStore: {
+        snapshot: () => observations,
+        upsert: (item) => observations.push(item),
+      },
+      getActiveIntent: async () => ({
+        cluster: {
+          members: [
+            { name: identity.name, address: identity.name },
+            { name: "peer-b.example.test", address: "peer-b.example.test" },
+          ],
+        },
+      }),
+      fetchImpl: async () => ({
+        ok: true,
+        json: async () => ({
+          data: [
+            {
+              ...node,
+              nodeId: "peer-b.example.test",
+              address: "peer-b.example.test",
+              clusterId: "c",
+            },
+          ],
+        }),
+      }),
+      environment: {},
+    }),
+  ).resolves.toBe(true);
+  expect(response.json.mock.calls[0][1].data.balanced).toHaveLength(1);
+});

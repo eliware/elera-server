@@ -58,3 +58,29 @@ test("uses default routing paths and event fallbacks", () => {
     }),
   );
 });
+
+test("validates routing dependencies and configured identity", () => {
+  expect(() => createRoutingComposition()).toThrow("validated config");
+  const options = {
+    config: {
+      clusterSize: 1,
+      intent: { cluster: { members: [{ name: "node.example.test" }] } },
+    },
+    identity: { name: "node.example.test" },
+    managed: { lease: async () => ({}) },
+    observationStore: { snapshot: () => [] },
+    query: async () => [[], []],
+    resolveAddress: async () => [],
+    log: {},
+  };
+  expect(() => createRoutingComposition(options)).not.toThrow();
+  expect(() =>
+    createRoutingComposition({ ...options, identity: { name: "node.other.test" } }),
+  ).toThrow("shared configured FQDN identity");
+  expect(() => createRoutingComposition({ ...options, getDrained: null })).toThrow(
+    "drain state reader",
+  );
+  expect(() => createRoutingComposition({ ...options, resolveAddress: undefined })).toThrow(
+    "validated config",
+  );
+});

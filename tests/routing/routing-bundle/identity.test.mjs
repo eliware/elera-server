@@ -17,6 +17,29 @@ test("uses request identity when managed lease metadata is absent", () => {
   });
 });
 
+test("enforces approved application and runtime node identities", () => {
+  const identity = { name: "node.example.test" };
+  expect(
+    resolveRoutingBundleIdentity(
+      { application: "app", database: "request-db", identity: "request-id" },
+      {
+        application: "app",
+        database: "lease-db",
+        identity: "lease-id",
+        nodeIdentity: identity.name,
+      },
+      identity,
+    ),
+  ).toMatchObject({ application: "app", database: "lease-db", credentialIdentity: "lease-id" });
+  expect(resolveRoutingBundleIdentity({}, {}, identity).key).toBe("default");
+  expect(() =>
+    resolveRoutingBundleIdentity({ application: "app" }, { application: "other" }, identity),
+  ).toThrow("not approved");
+  expect(() =>
+    resolveRoutingBundleIdentity({}, { nodeIdentity: "other.example.test" }, identity),
+  ).toThrow("does not match");
+});
+
 test("reuses a recent application route calculation and falls back to request application", async () => {
   let now = 100;
   const managed = {

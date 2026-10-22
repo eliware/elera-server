@@ -79,3 +79,16 @@ test("allows a blocked recovery to resume as a normal Galera join", () => {
     reason: "component reformed",
   });
 });
+
+test("ignores stale numeric and textual epochs", () => {
+  const numeric = createRecoveryState();
+  expect(numeric.set("pending", { epoch: 2 }).epoch).toBe(2);
+  expect(numeric.set("pending", { epoch: 1 }).epoch).toBe(2);
+  expect(numeric.set("pending", { epoch: 2 }).epoch).toBe(2);
+  expect(numeric.set("pending", { epoch: 3 }).epoch).toBe(3);
+  expect(numeric.set("pending", { epoch: "1" }).epoch).toBe(3);
+
+  const textual = createRecoveryState();
+  textual.set("pending", { epoch: "epoch-2" });
+  expect(textual.set("pending", { epoch: "epoch-1" }).epoch).toBe("epoch-2");
+});

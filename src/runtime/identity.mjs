@@ -1,8 +1,8 @@
 import { execFileSync } from "node:child_process";
 
-const fullyQualifiedHostname = () => {
+export const fullyQualifiedHostname = (execFile = execFileSync) => {
   try {
-    return execFileSync("hostname", ["-f"], { encoding: "utf8" }).trim();
+    return execFile("hostname", ["-f"], { encoding: "utf8" }).trim();
   } catch (error) {
     throw Object.assign(new Error(`hostname -f failed: ${error.message}`), {
       code: "RUNTIME_IDENTITY_UNAVAILABLE",

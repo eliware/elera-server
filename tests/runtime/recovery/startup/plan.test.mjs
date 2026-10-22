@@ -62,3 +62,7 @@ test("closes a separate evidence server for other decisions", async () => {
   await resolveSupervisorStartupPlan({ ...base, unifiedListener: false });
   expect(close).toHaveBeenCalled();
 });
+
+test("uses an empty options object when no startup plan options are supplied", async () => {
+  await expect(resolveSupervisorStartupPlan()).rejects.toThrow(TypeError);
+});

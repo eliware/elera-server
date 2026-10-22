@@ -99,3 +99,8 @@ test("rejects non-FQDN addresses and malformed freshness data", () => {
   expect(() => createObservation({ ...valid, address: "127.0.0.1" })).toThrow("incomplete");
   expect(isFresh({ observedAt: Number.NaN }, 100)).toBe(false);
 });
+
+test("uses defaults when callers omit the observation and freshness arguments", () => {
+  expect(() => createObservation()).toThrow("incomplete cluster observation");
+  expect(isFresh({ observedAt: 1 })).toBe(false);
+});

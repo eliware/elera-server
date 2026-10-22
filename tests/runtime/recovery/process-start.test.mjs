@@ -24,9 +24,19 @@ test("hands a non-winning recovery decision back to the caller", async () => {
   ).resolves.toBe(false);
   expect(handoff).toHaveBeenCalledWith(value.bootstrap);
   expect(value.mariaProcess.start).not.toHaveBeenCalled();
+  await expect(
+    startAuthorizedRecoveryProcess({
+      bootstrap: { winner: { node: "node-b.example.test" } },
+      identity: { name: "node-a.example.test" },
+      args: [],
+      mariaProcess: { start: jest.fn() },
+      recoveryState: { set: jest.fn() },
+    }),
+  ).resolves.toBe(false);
 });
 
 test("rejects unavailable arguments and a running process", async () => {
+  await expect(startAuthorizedRecoveryProcess()).rejects.toThrow("arguments are unavailable");
   await expect(startAuthorizedRecoveryProcess({ ...base(), args: undefined })).rejects.toThrow(
     "arguments are unavailable",
   );

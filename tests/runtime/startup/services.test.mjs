@@ -9,7 +9,11 @@ test("composes process, intent, and bootstrap services", () => {
   });
   const result = createSupervisorStartupServices({
     args: [],
-    config: { timeoutMs: 1, dataDir: "data" },
+    config: {
+      timeoutMs: 1,
+      dataDir: "data",
+      runtimeIdentity: { name: "node.example.test", address: "node.example.test" },
+    },
     log: { error: jest.fn() },
     recoveryState: { set: jest.fn() },
     recoveryAudit: { failure: jest.fn() },
@@ -21,11 +25,10 @@ test("composes process, intent, and bootstrap services", () => {
     recoveryCompletion: {},
     coldRecoveryProtocol: {},
     startupServer: {},
-    identity: { name: "node.example.test", address: "node.example.test" },
+    identity: undefined,
     signals: {},
     loadIntent: jest.fn(() => ({})),
     intentState: {},
-    environment: {},
     createProcessImpl,
   });
   expect(result.processController).toBeDefined();
@@ -34,4 +37,8 @@ test("composes process, intent, and bootstrap services", () => {
   expect(result.loadActiveIntent()).toEqual({});
   expect(result.loadActiveIntent.apply).toEqual(expect.any(Function));
   onUnexpectedExit(1);
+});
+
+test("rejects omitted startup service dependencies", () => {
+  expect(() => createSupervisorStartupServices()).toThrow("startup services require");
 });

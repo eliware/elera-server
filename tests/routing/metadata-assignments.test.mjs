@@ -13,6 +13,7 @@ test("reads and writes shared writer assignments", async () => {
   expect(await store.get("app")).toBe("elera-1.cluster.local");
   expect(store.peek("app")).toBe("elera-1.cluster.local");
   await store.set("app", "elera-2.cluster.local", "v2");
+  await store.set("app", "elera-3.cluster.local");
   expect(store.applications()).toEqual(["app"]);
   expect(calls.some((sql) => sql.includes("routing_assignments"))).toBe(true);
 });

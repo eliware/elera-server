@@ -54,6 +54,7 @@ test("wires peer observation publishing when peers exist", () => {
 });
 
 test("rejects incomplete cycle configuration and invalid peer identities", () => {
+  expect(() => startSupervisorCycles()).toThrow("valid hostname");
   const base = {
     identity: { name: "node.example.test" },
     store: {},
@@ -62,6 +63,19 @@ test("rejects incomplete cycle configuration and invalid peer identities", () =>
   };
   expect(() => startSupervisorCycles(base)).toThrow("configured cycle peers");
   expect(() => startSupervisorCycles({ ...base, peers: ["short"] })).toThrow("valid identities");
+  expect(() => startSupervisorCycles({ ...base, peers: [{ name: "short" }] })).toThrow(
+    "valid identities",
+  );
+  expect(() =>
+    startSupervisorCycles({
+      ...base,
+      peers: [{ name: "peer.example.test" }],
+      startCycles: jest.fn(),
+      store: { upsert: jest.fn() },
+      createPeerClient: jest.fn(() => ({})),
+      createPublisher: jest.fn(() => jest.fn()),
+    }),
+  ).not.toThrow();
   expect(() => startSupervisorCycles({ ...base, peers: [], store: null })).toThrow("dependencies");
   expect(() => startSupervisorCycles({ ...base, peers: [], identity: { name: "node" } })).toThrow(
     "valid hostname",

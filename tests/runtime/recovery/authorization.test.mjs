@@ -127,6 +127,26 @@ const base = (fetchImpl) => ({
   applyArguments: jest.fn((args) => [...args, "--bootstrap"]),
 });
 
+test("validates authorization inputs and leaves non-bootstrap decisions unchanged", async () => {
+  await expect(authorizeSupervisorRecovery()).rejects.toThrow("authorization dependencies");
+  const value = base(jest.fn());
+  const decision = { mode: "join", localWinner: false };
+  await expect(authorizeSupervisorRecovery({ ...value, decision })).resolves.toEqual({
+    decision,
+    args: undefined,
+  });
+  await expect(
+    authorizeSupervisorRecovery({ ...value, decision: { ...value.decision, winner: undefined } }),
+  ).resolves.toMatchObject({
+    decision: { mode: "blocked", reason: expect.stringContaining("winner") },
+  });
+  await expect(
+    authorizeSupervisorRecovery({ ...value, decision: { ...value.decision, winner: "not-local" } }),
+  ).resolves.toMatchObject({
+    decision: { mode: "blocked", reason: expect.stringContaining("winner") },
+  });
+});
+
 test("authorizes winner without mutating Galera state", async () => {
   const value = base(async () => ({ ok: true, json: async () => ({ data: { granted: true } }) }));
   const promote = jest.fn();

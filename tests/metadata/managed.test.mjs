@@ -4,6 +4,20 @@ import { createManagedMetadataForTest } from "../../test-fixtures/managed-metada
 
 test("requires the metadata query callback", () => {
   expect(() => createManagedMetadata()).toThrow("query function is required");
+  expect(() =>
+    createManagedMetadata({
+      query: async () => [[]],
+      identity: { name: "node.example.test" },
+      database: "invalid-name",
+    }),
+  ).toThrow("metadata database name is invalid");
+  expect(
+    createManagedMetadata({
+      query: async () => [[]],
+      identity: { name: "node.example.test" },
+      credentialKey: null,
+    }),
+  ).toBeDefined();
 });
 
 test("manages databases, identities, and scoped tokens without exposing policy SQL", async () => {

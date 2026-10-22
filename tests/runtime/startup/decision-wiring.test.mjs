@@ -81,3 +81,15 @@ test("allows fresh explicit bootstrap when state file is absent", async () => {
   ).resolves.toEqual({ explicit: true, decision, args: ["--bootstrap"] });
   expect(promote).not.toHaveBeenCalled();
 });
+
+test("uses defaults when explicit startup options are omitted", async () => {
+  await expect(resolveExplicitSupervisorStartup()).resolves.toMatchObject({ explicit: false });
+  await expect(
+    resolveExplicitSupervisorStartup({
+      environment: undefined,
+      nodeName: "node.example.test",
+      args: [],
+      decision: () => undefined,
+    }),
+  ).resolves.toMatchObject({ explicit: false });
+});

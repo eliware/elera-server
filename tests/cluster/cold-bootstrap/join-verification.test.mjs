@@ -12,6 +12,10 @@ test("accepts a synced member in the expected primary view", () =>
   expect(verifyJoinedMember({ values, expectedClusterId: "u", expectedSize: 3 })).toMatchObject({
     valid: true,
   }));
+test("uses default values and accepts a configured minimum cluster size", () => {
+  expect(verifyJoinedMember()).toMatchObject({ valid: false });
+  expect(verifyJoinedMember({ values, expectedClusterId: "u", minimumSize: 2 }).valid).toBe(true);
+});
 test("rejects mismatched UUID, membership, or readiness", () => {
   expect(
     verifyJoinedMember({

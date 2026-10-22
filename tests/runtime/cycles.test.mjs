@@ -1,4 +1,4 @@
-import { expect, test } from "@jest/globals";
+import { expect, jest, test } from "@jest/globals";
 import { startRuntimeCycles, stopRuntimeCycles } from "../../src/runtime/cycles.mjs";
 
 function timerFactory(timers) {
@@ -40,4 +40,13 @@ test("stops active timers and supports routing-only operation", () => {
   });
   stopRuntimeCycles({ ...cycles, clearIntervalImpl: (timer) => cleared.push(timer) });
   expect(cleared).toEqual([cycles.routingTimer]);
+});
+
+test("uses native timer defaults and accepts empty stop options", () => {
+  expect(() => startRuntimeCycles()).toThrow();
+  const publishRoutingEvent = jest.fn();
+  const cycles = startRuntimeCycles({ publishRoutingEvent });
+  expect(publishRoutingEvent).toHaveBeenCalledTimes(1);
+  stopRuntimeCycles(cycles);
+  stopRuntimeCycles();
 });

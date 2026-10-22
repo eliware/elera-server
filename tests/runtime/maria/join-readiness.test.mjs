@@ -3,6 +3,45 @@ import { createMariaStartupHarness as base } from "../../../test-fixtures/maria-
 import { startSupervisorMariaDb } from "../../../src/runtime/maria/startup.mjs";
 import { watchMariaDbJoinReadiness } from "../../../src/runtime/maria/join-readiness.mjs";
 jest.useFakeTimers();
+const joinReadinessOptions = (overrides = {}) => ({
+  createWatch: () => async () => ({ ready: false }),
+  health: { status: async () => ({ values: {} }) },
+  config: { startupTimeoutMs: 100, shutdownTimeoutMs: 10 },
+  startupDecision: { mode: "join", epoch: 2, reason: "joining" },
+  generation: 1,
+  recoveryState: { set: jest.fn(), snapshot: () => ({ state: "joining" }) },
+  recoveryAudit: { joinStart: jest.fn(), failure: jest.fn(), completion: jest.fn() },
+  processController: { stop: jest.fn() },
+  log: { error: jest.fn() },
+  identity: { name: "node.example.test" },
+  isCurrent: () => true,
+  ...overrides,
+});
+
+test("ignores stale join timeouts and watcher failures", async () => {
+  let timeout;
+  const stale = joinReadinessOptions({
+    createWatch: (options) => {
+      timeout = options.onTimeout;
+      return async () => ({ ready: false });
+    },
+    isCurrent: () => false,
+  });
+  watchMariaDbJoinReadiness(stale);
+  await timeout();
+  expect(stale.recoveryState.set).toHaveBeenCalledTimes(1);
+
+  const complete = joinReadinessOptions({
+    createWatch: () => async () => {
+      throw new Error("late failure");
+    },
+    recoveryState: { set: jest.fn(), snapshot: () => ({ state: "complete" }) },
+  });
+  watchMariaDbJoinReadiness(complete);
+  await Promise.resolve();
+  expect(complete.log.error).not.toHaveBeenCalled();
+});
+
 test("completes a join with the available Primary quorum before all members return", async () => {
   const value = {
     ...base(),

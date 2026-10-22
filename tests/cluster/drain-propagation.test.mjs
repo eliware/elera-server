@@ -58,6 +58,8 @@ test("requires FQDN peer URLs and omits authorization when no token is configure
   const fetchImpl = jest.fn(async () => ({ ok: true, status: 200 }));
   const drain = createDrainManager();
   expect(() => createDrainPropagation({ drain, peers: ["http://one"] })).toThrow("FQDN URLs");
+  expect(() => createDrainPropagation({ drain, peers: [123] })).toThrow("FQDN URLs");
+  expect(() => createDrainPropagation({ drain, peers: ["http://"] })).toThrow("FQDN URLs");
   const cluster = createDrainPropagation({
     drain,
     peers: ["http://one.example.test", "http://one.example.test/"],

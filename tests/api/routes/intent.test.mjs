@@ -47,9 +47,16 @@ test("handles intent inspection, raw and wrapped plans, apply, and verify", asyn
       getActiveIntent: state,
     }),
   ).toBe(true);
+  expect(await handleIntentRoute(context("POST", "/api/v1/config/plan", intent))).toBe(true);
   expect(
     await handleIntentRoute({
       ...context("POST", "/api/v1/config/apply", { confirm: true, intent }),
+      getActiveIntent: state,
+    }),
+  ).toBe(true);
+  expect(
+    await handleIntentRoute({
+      ...context("POST", "/api/v1/config/apply", { confirm: true, ...intent }),
       getActiveIntent: state,
     }),
   ).toBe(true);
@@ -103,4 +110,8 @@ test("requires the shared runtime identity", async () => {
   await expect(
     handleIntentRoute({ ...context("GET", "/api/v1/config/intent"), identity: undefined }),
   ).rejects.toThrow("runtime identity is required");
+});
+
+test("returns false for unrelated routes", async () => {
+  expect(await handleIntentRoute(context("GET", "/api/v1/unknown"))).toBe(false);
 });

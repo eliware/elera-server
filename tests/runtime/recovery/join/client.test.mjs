@@ -58,3 +58,8 @@ test("validates join targets and fetch dependency", async () => {
   const client = createRecoveryJoinClient({ fetchImpl: jest.fn() });
   await expect(client.join({ epoch: 1 })).rejects.toThrow("target URL is required");
 });
+
+test("uses default options and validates an omitted join request", async () => {
+  const client = createRecoveryJoinClient();
+  await expect(client.join()).rejects.toThrow("target URL is required");
+});

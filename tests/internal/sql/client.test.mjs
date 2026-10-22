@@ -29,3 +29,8 @@ test("creates a configured pool and delegates SQL operations", async () => {
   await expect(client.execute("SELECT 2", [1])).resolves.toEqual(["SELECT 2", [1]]);
   await expect(client.close()).resolves.toBe("closed");
 });
+
+test("uses the bundled MySQL library by default", async () => {
+  const client = createSupervisorSqlClient();
+  await expect(client.close()).resolves.toBeUndefined();
+});

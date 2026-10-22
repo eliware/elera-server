@@ -26,6 +26,7 @@ test("resyncs the requested application and rejects unrelated requests", () => {
 });
 
 test("serves the current routing event and ignores other routes", () => {
+  expect(handleRoutingResyncRoute()).toBe(false);
   const json = jest.fn();
   const event = { type: "routing.update", version: 3 };
   expect(

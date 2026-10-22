@@ -32,3 +32,7 @@ test("supports missing callbacks and idempotent release", () => {
   leave();
   expect(drain.active()).toBe(0);
 });
+
+test("uses the default wait timeout when no work is active", async () => {
+  await expect(createDrainManager().wait()).resolves.toBe(true);
+});

@@ -47,7 +47,6 @@ export function createColdBootstrapCoordinator({
     readState: async (node) => (await evidence(node)).state,
     recover: async (dataDir) => {
       const node = nodes.find((candidate) => candidate.dataDir === dataDir);
-      if (!node) throw new Error(`no configured node owns recovery data directory: ${dataDir}`);
       return (await evidence(node)).state;
     },
     isOnline: async (node) => (await evidence(node)).active,

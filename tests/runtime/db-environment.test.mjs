@@ -2,6 +2,10 @@ import { expect, test } from "@jest/globals";
 import { supervisorDbEnvironment } from "../../src/runtime/db-environment.mjs";
 
 test("builds local root-socket control-plane environment", () => {
+  expect(supervisorDbEnvironment()).toMatchObject({
+    MYSQL_HOST: "127.0.0.1",
+    MYSQL_DATABASE: "elera_meta",
+  });
   expect(supervisorDbEnvironment({ CUSTOM: "value", MYSQL_PASSWORD: "ignored" })).toEqual(
     expect.objectContaining({
       CUSTOM: "value",

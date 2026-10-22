@@ -14,6 +14,45 @@ jest.unstable_mockModule("../../../src/control-api.mjs", () => ({ createControlA
 const { createSupervisorControlComposition } =
   await import("../../../src/runtime/control/composition.mjs");
 
+const minimumOptions = {
+  db: { query: jest.fn() },
+  health: { status: jest.fn() },
+  clusterDrain: { set: jest.fn() },
+  coldState: { clusterDrain: {}, drain: {} },
+  processController: { stop: jest.fn(), start: jest.fn() },
+};
+
+test("validates control composition dependencies, identity, and runtime state", () => {
+  expect(() => createSupervisorControlComposition()).toThrow("composition dependencies");
+  expect(() => createSupervisorControlComposition({ ...minimumOptions, db: {} })).toThrow(
+    "composition dependencies",
+  );
+  expect(() => createSupervisorControlComposition({ ...minimumOptions, health: {} })).toThrow(
+    "composition dependencies",
+  );
+  expect(() => createSupervisorControlComposition({ ...minimumOptions, clusterDrain: {} })).toThrow(
+    "composition dependencies",
+  );
+  expect(() =>
+    createSupervisorControlComposition({ ...minimumOptions, coldState: { drain: {} } }),
+  ).toThrow("composition dependencies");
+  expect(() =>
+    createSupervisorControlComposition({ ...minimumOptions, processController: {} }),
+  ).toThrow("composition dependencies");
+  expect(() => createSupervisorControlComposition(minimumOptions)).toThrow("valid hostname");
+  expect(() =>
+    createSupervisorControlComposition({ ...minimumOptions, identity: { name: "invalid" } }),
+  ).toThrow("valid hostname");
+  const identity = { name: "node.example.test" };
+  expect(() =>
+    createSupervisorControlComposition({
+      ...minimumOptions,
+      identity,
+      config: { dataDir: "/data" },
+    }),
+  ).toThrow("state dependencies");
+});
+
 test("composes the control API with cluster and runtime dependencies", async () => {
   const dataDir = await mkdtemp(join(tmpdir(), "supervisor-reset-"));
   const query = jest.fn();

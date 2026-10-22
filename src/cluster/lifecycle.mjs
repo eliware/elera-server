@@ -18,10 +18,9 @@ export function createLifecycleManager({
       if (!isFqdn(identity?.name))
         throw new Error("valid runtime identity is required for lifecycle operations");
       if (target !== undefined && !isFqdn(target))
-        throw Object.assign(
-          new Error(`lifecycle target must be a valid hostname: ${target ?? "<missing>"}`),
-          { statusCode: 400 },
-        );
+        throw Object.assign(new Error(`lifecycle target must be a valid hostname: ${target}`), {
+          statusCode: 400,
+        });
       if (
         target !== undefined &&
         !config.intent?.cluster?.members?.some((member) => member.name === target)

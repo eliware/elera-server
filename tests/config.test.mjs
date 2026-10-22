@@ -1,6 +1,15 @@
 import { describe, expect, test } from "@jest/globals";
 import { loadSupervisorConfig, mariaDbArguments } from "../src/config.mjs";
 
+const standaloneIntent = (name = "node.example.test") => ({
+  apiVersion: "elera.eliware.dev/v1alpha1",
+  kind: "SupervisorIntent",
+  cluster: { name: "c", members: [{ name, address: name }] },
+  mariadb: { port: 3306 },
+  routing: { healthIntervalMs: 1000 },
+  drain: { queryTimeoutMs: 1 },
+});
+
 describe("supervisor configuration", () => {
   test("loads defaults and standalone arguments", () => {
     const config = loadSupervisorConfig({}, undefined, { name: "node.example.test" });
@@ -34,6 +43,36 @@ describe("supervisor configuration", () => {
     expect(() =>
       loadSupervisorConfig({ ELERA_HTTP_PORT: "0" }, undefined, { name: "node.example.test" }),
     ).toThrow("ELERA_HTTP_PORT");
+  });
+  test("rejects non-integer and out-of-range ports", () => {
+    for (const port of ["8080.5", "65536"]) {
+      expect(() =>
+        loadSupervisorConfig({ ELERA_HTTP_PORT: port }, undefined, {
+          name: "node.example.test",
+        }),
+      ).toThrow("ELERA_HTTP_PORT must be a valid TCP port");
+    }
+  });
+  test("uses default environment and resolves a missing identity", () => {
+    const identity = { name: "node.example.test" };
+    const config = loadSupervisorConfig(undefined, standaloneIntent(), undefined, () => identity);
+    expect(config.environment).toBe(process.env);
+    expect(config.runtimeIdentity).toBe(identity);
+  });
+  test("rejects a missing runtime identity", () => {
+    expect(() => loadSupervisorConfig({}, standaloneIntent(), {})).toThrow(
+      "runtime identity is required for supervisor configuration",
+    );
+  });
+  test("rejects an identity that is not a configured member", () => {
+    expect(() =>
+      loadSupervisorConfig({}, standaloneIntent(), { name: "other.example.test" }),
+    ).toThrow(
+      expect.objectContaining({
+        code: "RUNTIME_IDENTITY_MEMBERSHIP_MISMATCH",
+        statusCode: 400,
+      }),
+    );
   });
   test("uses hostname -f for the Galera node address", () => {
     const intent = {

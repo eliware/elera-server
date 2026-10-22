@@ -1,6 +1,19 @@
 import { expect, test } from "@jest/globals";
 import { createSupervisorComposition } from "../../src/runtime/composition.mjs";
 
+test("validates query functions and runtime identity", () => {
+  expect(() => createSupervisorComposition()).toThrow("query dependencies");
+  expect(() =>
+    createSupervisorComposition({ query: async () => [[], []], optionalQuery: null }),
+  ).toThrow("query dependencies");
+  expect(() =>
+    createSupervisorComposition({ query: async () => [[], []], identity: { name: "invalid" } }),
+  ).toThrow("valid hostname");
+  expect(() =>
+    createSupervisorComposition({ query: async () => [[], []], identity: undefined }),
+  ).toThrow("valid hostname");
+});
+
 test("composes metadata and durable observation services from injected dependencies", () => {
   const result = createSupervisorComposition({
     environment: {

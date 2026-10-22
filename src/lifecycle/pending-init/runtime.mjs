@@ -26,18 +26,8 @@ export const startPendingInitRuntime = ({
     throw new TypeError("shared runtime identity is required for pending initialization");
   const errorHandlers = registerHandlers({ events: ["uncaughtException", "unhandledRejection"] });
   let shuttingDown = false;
-  let listenerClosed = false;
-  let retryTimer;
-  const closePending = () => {
-    if (listenerClosed) return;
-    listenerClosed = true;
-    if (retryTimer) clearInterval(retryTimer);
-    try {
-      close(pending.server);
-    } catch (error) {
-      logger.warn?.("Pending recovery listener close failed", { error });
-    }
-  };
+  const state = { listenerClosed: false, retryTimer: undefined };
+  const closePending = () => closePendingListener(state, { close, server: pending.server, logger });
   const handoff = (bootstrapCluster) =>
     createHandoffImpl({ environment, spawnProcess, exit, bootstrapCluster });
   const identity = runtimeIdentityValue;
@@ -61,9 +51,9 @@ export const startPendingInitRuntime = ({
   const shutdown = () => {
     if (shuttingDown) return;
     shuttingDown = true;
-    if (retryTimer) clearInterval(retryTimer);
-    if (listenerClosed) return errorHandlers.removeHandlers();
-    listenerClosed = true;
+    if (state.retryTimer) clearInterval(state.retryTimer);
+    if (state.listenerClosed) return errorHandlers.removeHandlers();
+    state.listenerClosed = true;
     try {
       close(pending.server, () => errorHandlers.removeHandlers());
     } catch (error) {
@@ -80,7 +70,7 @@ export const startPendingInitRuntime = ({
     logger,
   });
   if (recoveryRequired && typeof recoveryProtocol?.retry === "function") {
-    retryTimer = setInterval(
+    state.retryTimer = setInterval(
       () => {
         Promise.resolve(recoveryProtocol.retry()).catch((error) =>
           logger.warn?.("Automatic recovery data retry failed", { error }),
@@ -88,11 +78,22 @@ export const startPendingInitRuntime = ({
       },
       Math.max(250, recoveryRetryIntervalMs),
     );
-    retryTimer.unref?.();
+    state.retryTimer.unref?.();
   }
   const stop = () => {
-    if (retryTimer) clearInterval(retryTimer);
+    if (state.retryTimer) clearInterval(state.retryTimer);
     shutdown();
   };
   return { server: pending.server, signals, shutdown: stop };
 };
+
+export function closePendingListener(state, { close, server, logger }) {
+  if (state.listenerClosed) return;
+  state.listenerClosed = true;
+  if (state.retryTimer) clearInterval(state.retryTimer);
+  try {
+    close(server);
+  } catch (error) {
+    logger.warn?.("Pending recovery listener close failed", { error });
+  }
+}

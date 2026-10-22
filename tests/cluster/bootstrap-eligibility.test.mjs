@@ -2,6 +2,10 @@ import { expect, test } from "@jest/globals";
 import { bootstrapEligibility } from "../../src/cluster/bootstrap-eligibility.mjs";
 
 test("requires clustered mode and a non-ready uninitialized node", () => {
+  expect(bootstrapEligibility()).toEqual({
+    eligible: false,
+    reason: "requires clustered configuration",
+  });
   expect(bootstrapEligibility({ enabled: false, ready: false })).toEqual({
     eligible: false,
     reason: "requires clustered configuration",

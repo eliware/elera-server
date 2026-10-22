@@ -36,3 +36,25 @@ test("fills safe defaults when bootstrap environment is incomplete", () => {
   expect(bundle.routes.primary[0]).toMatchObject({ host: "elera-0.example.test", port: 3306 });
   expect(bundle.routes.balanced[0]).toEqual(bundle.routes.primary[0]);
 });
+
+test("uses the process environment when no bootstrap environment is supplied", () => {
+  const bundle = createBootstrapCredentialLease(undefined, { name: "elera-0.example.test" })({
+    database: "app",
+  });
+  expect(bundle.routes.primary[0].port).toBe(Number(process.env.ELERA_NODE_SQL_PORT ?? 3306));
+});
+
+test("rejects identity mismatches and invalid SQL ports", () => {
+  const identity = { name: "elera-0.example.test" };
+  expect(() =>
+    createBootstrapCredentialLease({}, identity)({ database: "app", identity: "other" }),
+  ).toThrow(expect.objectContaining({ code: "RUNTIME_IDENTITY_MISMATCH", statusCode: 409 }));
+  expect(() =>
+    createBootstrapCredentialLease(
+      { ELERA_NODE_SQL_PORT: "65536" },
+      identity,
+    )({
+      database: "app",
+    }),
+  ).toThrow("ELERA_NODE_SQL_PORT must be a valid TCP port");
+});

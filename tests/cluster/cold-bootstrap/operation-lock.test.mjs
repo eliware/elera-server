@@ -169,3 +169,22 @@ test("cleans up a lock when lock metadata cannot be written", async () => {
   expect(handle.close).toHaveBeenCalled();
   expect(remove).toHaveBeenCalledWith("lock");
 });
+
+test("preserves metadata errors when setup cleanup also fails", async () => {
+  const lock = createOperationLock({
+    path: "lock",
+    makeDirectory: async () => {},
+    openFile: async () => ({
+      writeFile: async () => {
+        throw new Error("disk full");
+      },
+      close: async () => {
+        throw new Error("already closed");
+      },
+    }),
+    remove: async () => {
+      throw new Error("already removed");
+    },
+  });
+  await expect(lock.run(async () => "never")).rejects.toThrow("disk full");
+});

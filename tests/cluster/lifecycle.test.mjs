@@ -31,10 +31,11 @@ test("requires confirmation and rejects unavailable operations", async () => {
     operations: {},
   });
   await expect(manager.execute("join", { target: peer })).rejects.toThrow("confirm");
+  await expect(manager.execute("join")).rejects.toThrow("confirm");
   await expect(manager.execute("join", { target: peer, confirm: true })).rejects.toThrow(
     "unavailable",
   );
-  expect(() => createLifecycleManager({})).toThrow("status function");
+  expect(() => createLifecycleManager()).toThrow("status function");
 });
 test("rejects execution when the plan is ineligible", async () => {
   const manager = createLifecycleManager({

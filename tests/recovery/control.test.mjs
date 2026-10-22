@@ -20,6 +20,7 @@ test("bounds the recovery event history and supplies default reasons", () => {
   expect(control.events()).toHaveLength(100);
   control.acknowledge();
   expect(control.events().at(-1).reason).toBe("operator acknowledged recovery");
+  expect(control.abort().reason).toBe("operator aborted recovery");
 });
 
 test("records custom events with timestamps and returns defensive event copies", () => {
