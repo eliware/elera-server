@@ -50,6 +50,31 @@ test("publishes a normalized local observation to peers", async () => {
   expect(calls.map(([name]) => name)).toEqual(["publish", "refresh"]);
 });
 
+test("publishes a local observation when no peers exist", async () => {
+  let observation;
+  const publish = createPeerPublisher({
+    health: {
+      status: async () => ({
+        ready: true,
+        values: {
+          wsrep_local_state_comment: "Synced",
+          wsrep_cluster_status: "Primary",
+          wsrep_ready: "ON",
+        },
+      }),
+    },
+    observationStore: { upsert: (value) => (observation = value) },
+    node: { name: "single.example.test" },
+    clusterId: "single-cluster",
+    now: () => 123,
+  });
+  await expect(publish()).resolves.toMatchObject({
+    published: true,
+    observation: { nodeId: "single.example.test", observedAt: 123 },
+  });
+  expect(observation).toMatchObject({ nodeId: "single.example.test", health: "ok" });
+});
+
 test("uses safe fallback when health is unavailable", async () => {
   let received;
   const publish = createPeerPublisher({

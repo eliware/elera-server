@@ -22,7 +22,7 @@ test("starts supervisor runtime dependencies", async () => {
     routingEvent: () => undefined,
     routingBus: { publish: () => {} },
     sharedRoutingAssignments: { applications: () => [] },
-    observationStore: {},
+    observationStore: { upsert: jest.fn() },
     getDrained: () => false,
     environment: {},
     setDb: (value) => {

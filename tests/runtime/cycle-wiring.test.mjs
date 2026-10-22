@@ -1,19 +1,31 @@
 import { expect, jest, test } from "@jest/globals";
 import { startSupervisorCycles } from "../../src/runtime/cycle-wiring.mjs";
 
-test("starts routing-only cycles without peers", () => {
-  const startCycles = jest.fn(() => ({ routingTimer: "routing" }));
-  expect(
-    startSupervisorCycles({
-      peers: [],
-      identity: { name: "node.example.test" },
-      store: {},
-      health: { status: jest.fn() },
-      publishRoutingEvent: jest.fn(),
-      startCycles,
-    }),
-  ).toEqual({ routingTimer: "routing" });
-  expect(startCycles).toHaveBeenCalledWith({ publishRoutingEvent: expect.any(Function) });
+test("publishes local observations in single-node mode", () => {
+  const startCycles = jest.fn((options) => ({
+    routingTimer: options.publishRoutingEvent,
+    peerTimer: options.publishPeers,
+  }));
+  const createPeerClient = jest.fn();
+  const publishPeers = jest.fn();
+  const createPublisher = jest.fn(() => publishPeers);
+  const result = startSupervisorCycles({
+    peers: [],
+    identity: { name: "node.example.test" },
+    store: {},
+    health: { status: jest.fn() },
+    clusterId: "cluster",
+    getDrained: () => false,
+    publishRoutingEvent: jest.fn(),
+    startCycles,
+    createPeerClient,
+    createPublisher,
+  });
+  expect(createPeerClient).not.toHaveBeenCalled();
+  expect(createPublisher).toHaveBeenCalledWith(
+    expect.objectContaining({ peerClient: undefined, clusterId: "cluster" }),
+  );
+  expect(result.peerTimer).toBe(publishPeers);
 });
 
 test("wires peer observation publishing when peers exist", () => {

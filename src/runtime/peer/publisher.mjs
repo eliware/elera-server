@@ -17,8 +17,8 @@ export function createPeerPublisher({
   if (
     typeof health?.status !== "function" ||
     typeof observationStore?.upsert !== "function" ||
-    typeof peerClient?.publish !== "function" ||
-    typeof peerClient?.refresh !== "function"
+    (peerClient &&
+      (typeof peerClient.publish !== "function" || typeof peerClient.refresh !== "function"))
   )
     throw new TypeError("peer publisher dependencies are required");
   if (!isFqdn(node?.name)) throw new TypeError("peer publisher identity must be a valid hostname");
@@ -47,8 +47,10 @@ export function createPeerPublisher({
       observedAt: now(),
     };
     observationStore.upsert(observation);
-    await peerClient.publish(observation);
-    await peerClient.refresh();
+    if (peerClient) {
+      await peerClient.publish(observation);
+      await peerClient.refresh();
+    }
     return { published: true, observation };
   };
 }
