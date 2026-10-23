@@ -69,6 +69,7 @@ export async function startOrdinarySupervisorRuntime(options) {
     recoveryState,
     recoveryAudit,
     recoveryCompletion: state.recoveryCompletion,
+    recoveryLease: recoveryResult.recoveryLease,
     coldRecoveryProtocol: state.coldRecoveryProtocol,
     startupServer: recoveryResult.startupServer,
     identity,

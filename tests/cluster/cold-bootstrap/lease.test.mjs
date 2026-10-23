@@ -32,6 +32,60 @@ test("requires lease path and claim identity", async () => {
   await expect(lease.claim()).rejects.toThrow("recovery lease epoch and FQDN winner are required");
 });
 
+test("releases only the requested lease and allows a later epoch", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "elera-lease-"));
+  const path = join(directory, "lease.json");
+  const lease = createRecoveryLease(path);
+  await lease.claim({ epoch: "e1", winner: "a.example.test" });
+  await expect(lease.release({ epoch: "other" })).resolves.toBe(false);
+  await expect(lease.release({ winner: "other.example.test" })).resolves.toBe(false);
+  await expect(lease.release({ epoch: "e1", winner: "a.example.test" })).resolves.toBe(true);
+  await expect(lease.claim({ epoch: "e2", winner: "b.example.test" })).resolves.toMatchObject({
+    granted: true,
+  });
+  await rm(directory, { recursive: true, force: true });
+});
+
+test("returns false when release finds no lease", async () => {
+  const lease = createRecoveryLease("missing.json");
+  await expect(lease.release()).resolves.toBe(false);
+});
+
+test("propagates unexpected lease release storage failures", async () => {
+  const lease = createRecoveryLease("lease.json", {
+    readLease: async () => {
+      const error = new Error("storage unavailable");
+      error.code = "EIO";
+      throw error;
+    },
+  });
+  await expect(lease.release()).rejects.toMatchObject({ code: "EIO" });
+});
+
+test("handles a lease removed by another process during release", async () => {
+  const lease = createRecoveryLease("lease.json", {
+    readLease: async () => JSON.stringify({ epoch: "e1", winner: "a.example.test" }),
+    removeLease: async () => {
+      const error = new Error("lease already removed");
+      error.code = "ENOENT";
+      throw error;
+    },
+  });
+  await expect(lease.release()).resolves.toBe(false);
+});
+
+test("propagates unexpected lease removal failures", async () => {
+  const lease = createRecoveryLease("lease.json", {
+    readLease: async () => JSON.stringify({ epoch: "e1", winner: "a.example.test" }),
+    removeLease: async () => {
+      const error = new Error("storage unavailable");
+      error.code = "EIO";
+      throw error;
+    },
+  });
+  await expect(lease.release()).rejects.toMatchObject({ code: "EIO" });
+});
+
 test("rejects a lease path that cannot be opened as a file", async () => {
   const directory = await mkdtemp(join(tmpdir(), "elera-lease-"));
   const path = join(directory, "lease");

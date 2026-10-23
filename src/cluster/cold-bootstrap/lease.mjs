@@ -64,6 +64,23 @@ export function createRecoveryLease(
         return { granted: false, reason: "recovery lease is held by different epoch" };
       }
     },
+    async release({ epoch, winner } = {}) {
+      let current;
+      try {
+        current = JSON.parse(await readLease(path, "utf8"));
+      } catch (error) {
+        if (error.code === "ENOENT") return false;
+        throw error;
+      }
+      if ((epoch && current.epoch !== epoch) || (winner && current.winner !== winner)) return false;
+      try {
+        await removeLease(path);
+        return true;
+      } catch (error) {
+        if (error.code === "ENOENT") return false;
+        throw error;
+      }
+    },
   };
 
   async function acquireCleanupLock() {

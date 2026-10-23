@@ -13,6 +13,7 @@ export function startSupervisorMariaDb({
   recoveryCompletion,
   coldRecoveryProtocol,
   startupServer,
+  recoveryLease,
   identity,
   signals,
   log,
@@ -65,6 +66,7 @@ export function startSupervisorMariaDb({
         log,
         identity,
         isCurrent,
+        recoveryLease,
       };
       if (config.elera && ["join", "rejoin"].includes(startupDecision.mode))
         watchMariaDbJoinReadiness(shared);

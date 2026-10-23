@@ -1,3 +1,5 @@
+import { releaseRecoveryLease } from "./release-recovery-lease.mjs";
+
 export function watchMariaDbJoinReadiness({
   createWatch,
   health,
@@ -10,6 +12,7 @@ export function watchMariaDbJoinReadiness({
   log,
   identity,
   isCurrent,
+  recoveryLease,
 }) {
   recoveryState.set("joining", {
     reason: startupDecision.reason,
@@ -54,6 +57,7 @@ export function watchMariaDbJoinReadiness({
         generation,
       });
       recoveryAudit.completion?.({ node: identity.name, epoch: startupDecision.epoch });
+      await releaseRecoveryLease(recoveryLease, log);
     })
     .catch((error) => {
       if (!isCurrent() || recoveryState.snapshot?.().state === "complete") return;

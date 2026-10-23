@@ -1,3 +1,5 @@
+import { releaseRecoveryLease } from "./release-recovery-lease.mjs";
+
 export function watchMariaDbBootstrapReadiness({
   createWatch,
   health,
@@ -13,6 +15,7 @@ export function watchMariaDbBootstrapReadiness({
   log,
   identity,
   isCurrent,
+  recoveryLease,
 }) {
   void createWatch({
     health,
@@ -67,6 +70,7 @@ export function watchMariaDbBootstrapReadiness({
           winner: identity.name,
         });
       recoveryAudit.completion?.({ epoch: startupDecision.epoch, winner: identity.name });
+      await releaseRecoveryLease(recoveryLease, log);
       await startupServer?.close();
     })
     .catch((error) => {
