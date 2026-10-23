@@ -5,9 +5,10 @@ and recovery. HAProxy must proxy supervisor HTTP only. The supervisor makes
 health, topology, eligibility, routing, and credential decisions. `elera-lib`
 uses the returned routing bundle to maintain direct SQL connections.
 
-`ROOT_TOKEN` is reserved for first boot, bootstrap, metadata initialization,
-full restore, and token administration. Usual clients use scoped bearer
-tokens. The replicated `elera_meta` database is authoritative for managed
+`ROOT_TOKEN` is a pre-shared, long-lived credential for first boot, cluster
+bootstrap, administration, metadata initialization, full backups, and full
+restores. Peer requests use it when `ELERA_PEER_TOKEN` is unset. Usual clients
+use scoped bearer tokens. The replicated `elera_meta` database is authoritative for managed
 databases, identities, accounts, grants, tokens, and encrypted artifact
 metadata. The age private key is not stored in MariaDB.
 
