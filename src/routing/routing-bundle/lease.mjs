@@ -27,7 +27,24 @@ export function createRoutingBundleLease({ managed, identity, environment, selec
       : resolveRoutingBundleIdentity(request, result, identity);
     const { application, database, credentialIdentity, key } = leaseIdentity;
     const routes = await selection.resolve(key);
-    const selected = routes.balanced.length ? routes : result.routes;
+    let selected = routes.balanced.length ? routes : result.routes;
+    if (!selected && Number(environment.ELERA_CLUSTER_SIZE ?? 0) === 1) {
+      const local = {
+        host: identity.name,
+        port: Number(environment.ELERA_NODE_SQL_PORT ?? 3306),
+        nodeId: identity.name,
+      };
+      selected = {
+        primary: [local],
+        balanced: [local],
+        writer: local,
+        failover: [],
+        readers: [local],
+        bundleVersion: "standalone",
+      };
+    }
+    if (!selected)
+      throw Object.assign(new Error("no eligible SQL route is available"), { statusCode: 503 });
     validateBundleRoutes(selected);
     return connectionBundleFromConfig({
       ...result,

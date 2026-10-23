@@ -77,6 +77,54 @@ test("creates token bundles with the token account and app routing assignment", 
   expect(resolved).toEqual(["default", "payments", "default"]);
 });
 
+test("uses the local route for a token bundle on a standalone server", async () => {
+  const lease = createRoutingBundleLease({
+    managed: {
+      lease: async () => ({}),
+      sqlConnection: async () => ({ username: "elera_root", password: "root-db-secret" }),
+    },
+    identity: { name: "single.example.test" },
+    environment: { ELERA_CLUSTER_SIZE: "1" },
+    selection: { resolve: async () => ({ primary: [], balanced: [], bundleVersion: "empty" }) },
+  });
+  await expect(lease({ root: true })).resolves.toMatchObject({
+    routes: {
+      primary: [{ host: "single.example.test", port: 3306 }],
+      balanced: [{ host: "single.example.test", port: 3306 }],
+    },
+    writer: { host: "single.example.test", port: 3306 },
+  });
+});
+
+test("rejects an empty route set on a multi-node server", async () => {
+  const lease = createRoutingBundleLease({
+    managed: {
+      lease: async () => ({}),
+      sqlConnection: async () => ({ username: "elera_root", password: "root-db-secret" }),
+    },
+    identity: { name: "node.example.test" },
+    environment: { ELERA_CLUSTER_SIZE: "3" },
+    selection: { resolve: async () => ({ primary: [], balanced: [], bundleVersion: "empty" }) },
+  });
+  await expect(lease({ root: true })).rejects.toMatchObject({
+    message: "no eligible SQL route is available",
+    statusCode: 503,
+  });
+});
+
+test("rejects an empty route set when the cluster size is not configured", async () => {
+  const lease = createRoutingBundleLease({
+    managed: {
+      lease: async () => ({}),
+      sqlConnection: async () => ({ username: "elera_root", password: "root-db-secret" }),
+    },
+    identity: { name: "node.example.test" },
+    environment: {},
+    selection: { resolve: async () => ({ primary: [], balanced: [], bundleVersion: "empty" }) },
+  });
+  await expect(lease({ root: true })).rejects.toMatchObject({ statusCode: 503 });
+});
+
 test("rejects a bundle with no eligible writer", async () => {
   const service = createRoutingBundleService({
     managed: {
