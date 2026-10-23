@@ -1,7 +1,6 @@
 import { createRecoveryEvidenceCollector } from "./protocol/evidence-collection.mjs";
 import { createRecoveryPlanner } from "./protocol/recovery-plan.mjs";
 import { createRecoveryEpochAuthority } from "./protocol/epoch-authority.mjs";
-import { verifyRecoveryMembership } from "./protocol/verify-membership.mjs";
 
 export function createColdRecoveryProtocol({
   nodes,
@@ -48,8 +47,6 @@ export function createColdRecoveryProtocol({
     read,
     persist,
     collect,
-    verifyMembership: (epoch) =>
-      verifyRecoveryMembership({ collect, nodes, clusterId: epoch.clusterId }),
     now,
     publishEvent,
     debug,

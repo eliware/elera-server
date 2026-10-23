@@ -35,7 +35,7 @@ test("rejects completion from a different winner", async () => {
   ).rejects.toMatchObject({ statusCode: 409 });
 });
 
-test("validates completion authority and persists verified live membership", async () => {
+test("validates completion authority and persists the approved membership", async () => {
   await expect(completeRecoveryEpoch()).rejects.toThrow();
   const evidenceEpoch = createRecoveryEpoch({
     clusterId: "cluster",
@@ -47,21 +47,20 @@ test("validates completion authority and persists verified live membership", asy
     acknowledgements: ["a.example.test"],
   });
   const existing = transitionRecoveryEpoch(authorized, "bootstrapping");
-  const dependencies = (membership = existing.quorum) => ({
+  const dependencies = () => ({
     read: async () => existing,
     persist: jest.fn(),
     now: () => new Date("2026-10-14T00:00:00Z"),
     publishEvent: jest.fn(),
     debug: jest.fn(),
     setCurrent: jest.fn(),
-    verifyMembership: async () => membership,
   });
-  const request = { epoch: existing.epoch, winner: "a.example.test", clusterId: "cluster" };
-  const unverified = dependencies();
-  delete unverified.verifyMembership;
-  await expect(completeRecoveryEpoch(request, unverified)).rejects.toMatchObject({
-    statusCode: 409,
-  });
+  const request = {
+    epoch: existing.epoch,
+    winner: "a.example.test",
+    clusterId: "cluster",
+    membership: existing.quorum,
+  };
   await expect(
     completeRecoveryEpoch(
       { ...request, epoch: "stale", membership: existing.quorum },
@@ -74,11 +73,13 @@ test("validates completion authority and persists verified live membership", asy
       dependencies(),
     ),
   ).rejects.toMatchObject({ statusCode: 409 });
-  await expect(completeRecoveryEpoch(request, dependencies([]))).rejects.toMatchObject({
+  await expect(
+    completeRecoveryEpoch({ ...request, membership: [] }, dependencies()),
+  ).rejects.toMatchObject({
     statusCode: 409,
   });
   await expect(
-    completeRecoveryEpoch(request, dependencies(["other.example.test"])),
+    completeRecoveryEpoch({ ...request, membership: ["other.example.test"] }, dependencies()),
   ).rejects.toMatchObject({ statusCode: 409 });
 
   const deps = dependencies();

@@ -113,7 +113,7 @@ test("starts a joining member and records the transition", async () => {
   );
   expect(value.recoveryAudit.joinStart).toHaveBeenCalled();
 });
-test("handles bootstrap watch timeout and completion", async () => {
+test("waits for the local bootstrap view before publishing recovery completion", async () => {
   let watchOptions;
   const value = {
     ...base(),
@@ -128,7 +128,6 @@ test("handles bootstrap watch timeout and completion", async () => {
     coldRecoveryProtocol: { complete: jest.fn() },
     createWatch: jest.fn((options) => {
       watchOptions = options;
-      options.onTimeout();
       return async () => ({ ready: true });
     }),
   };
@@ -143,7 +142,7 @@ test("handles bootstrap watch timeout and completion", async () => {
         wsrep_cluster_size: "1",
       },
     }),
-  ).toBe(false);
+  ).toBe(true);
   expect(
     watchOptions.isReady({
       values: {
@@ -153,10 +152,38 @@ test("handles bootstrap watch timeout and completion", async () => {
         wsrep_cluster_size: "3",
       },
     }),
-  ).toBe(true);
-  expect(value.recoveryAudit.failure).toHaveBeenCalled();
+  ).toBe(false);
+  expect(value.recoveryAudit.failure).not.toHaveBeenCalled();
   expect(value.coldRecoveryProtocol.complete).toHaveBeenCalled();
+  expect(value.coldRecoveryProtocol.complete).toHaveBeenCalledWith(
+    expect.objectContaining({ membership: ["a", "b", "c"] }),
+  );
   expect(value.recoveryState.set).toHaveBeenCalledWith("complete", expect.any(Object));
+});
+test("stops bootstrap when its local Primary view does not become ready", async () => {
+  let watchOptions;
+  const value = readinessOptions({
+    startupDecision: { epoch: 2 },
+    recoveryCompletion: { publish: jest.fn() },
+    processController: { stop: jest.fn() },
+    startupServer: { close: jest.fn() },
+    createWatch: (options) => {
+      watchOptions = options;
+      return async () => ({ ready: false });
+    },
+  });
+  watchMariaDbBootstrapReadiness(value);
+  await watchOptions.onTimeout();
+  expect(value.recoveryState.set).toHaveBeenCalledWith(
+    "cluster-unavailable",
+    expect.objectContaining({ reason: expect.stringContaining("bootstrap") }),
+  );
+  expect(value.recoveryAudit.failure).toHaveBeenCalled();
+  expect(value.recoveryCompletion.publish).toHaveBeenCalledWith(
+    expect.objectContaining({ status: "failed" }),
+  );
+  expect(value.processController.stop).toHaveBeenCalledWith(value.config.shutdownTimeoutMs);
+  expect(value.startupServer.close).toHaveBeenCalled();
 });
 test("completes recovered bootstrap without an optional completion publisher", async () => {
   const value = {
@@ -226,7 +253,7 @@ test("starts a bootstrap readiness watch", () => {
   expect(createWatch).toHaveBeenCalled();
 });
 
-test("waits for every recovery member to report a ready Primary", () => {
+test("uses one-node readiness while peers wait for bootstrap completion", () => {
   let watchOptions;
   const options = readinessOptions({
     startupDecision: { epoch: 1, recoveryEpoch: { quorum: ["a", "b", "c"] } },
@@ -244,6 +271,6 @@ test("waits for every recovery member to report a ready Primary", () => {
       wsrep_cluster_size: String(size),
     },
   });
-  expect(watchOptions.isReady(result(3))).toBe(true);
-  expect(watchOptions.isReady(result(1))).toBe(false);
+  expect(watchOptions.isReady(result(1))).toBe(true);
+  expect(watchOptions.isReady(result(3))).toBe(false);
 });
