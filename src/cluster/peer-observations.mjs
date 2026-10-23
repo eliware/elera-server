@@ -25,6 +25,7 @@ const peerUrl = (peer) => {
 };
 export function createPeerObservationClient({
   peers = [],
+  members,
   token,
   fetchImpl = fetch,
   store,
@@ -41,6 +42,11 @@ export function createPeerObservationClient({
       }),
     ).values(),
   ];
+  const memberNames = new Set(
+    (members ?? targets.map(({ hostname }) => hostname)).map((member) =>
+      typeof member === "string" ? member : member?.name,
+    ),
+  );
   const headers = () => ({
     accept: "application/json",
     ...(token ? { authorization: `Bearer ${token}` } : {}),
@@ -53,7 +59,11 @@ export function createPeerObservationClient({
           try {
             const response = await fetchImpl(`${base}/api/v1/cluster/observations`, {
               method: "POST",
-              headers: { ...headers(), "content-type": "application/json" },
+              headers: {
+                ...headers(),
+                ...(token ? { "x-elera-internal": "true", "x-elera-peer-token": token } : {}),
+                "content-type": "application/json",
+              },
               body: JSON.stringify(normalized),
               signal: AbortSignal.timeout(timeoutMs),
             });
@@ -68,7 +78,7 @@ export function createPeerObservationClient({
     },
     async refresh() {
       const results = await Promise.all(
-        targets.map(async ({ base, hostname }) => {
+        targets.map(async ({ base }) => {
           try {
             const response = await fetchImpl(`${base}/api/v1/cluster/observations`, {
               headers: headers(),
@@ -78,10 +88,10 @@ export function createPeerObservationClient({
             const body = await response.json();
             return (body.data ?? []).map((raw) => {
               const observation = createObservation(raw);
-              if (observation.nodeId !== hostname) {
+              if (!memberNames.has(observation.nodeId)) {
                 log.warn?.("Peer observation identity mismatch", {
                   peer: base,
-                  expectedNode: hostname,
+                  expectedNodes: [...memberNames],
                   respondingNode: observation.nodeId,
                 });
                 return { accepted: false, reason: "identity-mismatch" };

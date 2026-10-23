@@ -34,7 +34,9 @@ export function startSupervisorCycles({
     )
   )
     throw new TypeError("cycle peers must use valid identities");
-  const peerClient = peers.length ? createPeerClient({ peers, token, store, log }) : undefined;
+  const peerClient = peers.length
+    ? createPeerClient({ peers, members: [identity, ...peers], token, store, log })
+    : undefined;
   const publish = createPublisher({
     health,
     observationStore: store,

@@ -51,6 +51,7 @@ test("wires peer observation publishing when peers exist", () => {
   });
   expect(createPeerClient).toHaveBeenCalledWith({
     peers: ["peer-a.example.test", "peer-b.example.test"],
+    members: [{ name: "node-a.example.test" }, "peer-a.example.test", "peer-b.example.test"],
     token: "token",
     store: {},
     log: {},

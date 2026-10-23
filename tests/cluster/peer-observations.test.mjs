@@ -83,6 +83,8 @@ test("publishes observations with authenticated JSON and reports peer failures",
   ]);
   expect(calls[0][0]).toBe("http://one.example.test/api/v1/cluster/observations");
   expect(calls[0][1].headers["content-type"]).toBe("application/json");
+  expect(calls[0][1].headers["x-elera-internal"]).toBe("true");
+  expect(calls[0][1].headers["x-elera-peer-token"]).toBe("secret");
   expect(JSON.parse(calls[0][1].body)).toMatchObject(observation);
   expect(warnings).toHaveLength(1);
 });
@@ -116,6 +118,26 @@ test("rejects short peer URLs and rejects observations from the wrong peer ident
   });
   expect(await client.refresh()).toEqual([{ accepted: false, reason: "identity-mismatch" }]);
   expect(store.upsert).not.toHaveBeenCalled();
+});
+
+test("refreshes merged observations from configured cluster members", async () => {
+  const store = { upsert: jest.fn((item) => ({ accepted: item.nodeId })) };
+  const client = createPeerObservationClient({
+    peers: ["http://peer.example.test"],
+    members: ["local.example.test", "peer.example.test"],
+    store,
+    fetchImpl: async () => ({
+      ok: true,
+      json: async () => ({
+        data: [observation, { ...observation, nodeId: "local.example.test" }],
+      }),
+    }),
+  });
+  await expect(client.refresh()).resolves.toEqual([
+    { accepted: "peer.example.test" },
+    { accepted: "local.example.test" },
+  ]);
+  expect(store.upsert).toHaveBeenCalledTimes(2);
 });
 
 test("builds peer URLs from address objects and checks peer identity", async () => {
