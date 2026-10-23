@@ -13,7 +13,7 @@ export function createRoutingBundleService({
   assignmentStore = createAssignmentStore({
     path:
       environment.ELERA_ASSIGNMENTS_PATH ??
-      `${environment.MARIADB_DATA_DIR ?? "/var/lib/mysql"}/elera-state/routing-assignments.json`,
+      `${environment.ELERA_CONFIG_STATE_DIR ?? "/var/lib/elera"}/routing-assignments.json`,
   }),
   validateAddresses = false,
   resolveAddress,

@@ -40,7 +40,7 @@ export function createSupervisorApplicationContext({
     config,
     log,
   });
-  const stateDir = environment.ELERA_CONFIG_STATE_DIR ?? `${config.dataDir}/elera-state`;
+  const stateDir = environment.ELERA_CONFIG_STATE_DIR ?? "/var/lib/elera";
   const restartMarker = createRestartMarker({
     path: `${stateDir}/clean-restart.json`,
     node: identity.name,

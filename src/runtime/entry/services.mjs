@@ -48,7 +48,7 @@ export function createSupervisorEntryServices({
       ...environment,
       ELERA_EVENT_VERSION_PATH:
         environment.ELERA_EVENT_VERSION_PATH ??
-        `${config.dataDir}/elera-state/routing-event-versions.json`,
+        `${environment.ELERA_CONFIG_STATE_DIR ?? "/var/lib/elera"}/routing-event-versions.json`,
     },
     config,
     identity,

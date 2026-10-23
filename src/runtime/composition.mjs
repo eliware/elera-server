@@ -20,9 +20,7 @@ export function createSupervisorComposition({
   if (!identity?.name || !identity.name.includes("."))
     throw new TypeError("shared runtime identity must be a valid hostname");
   const intentState = createIntentState({
-    stateDir:
-      environment.ELERA_CONFIG_STATE_DIR ??
-      `${environment.MARIADB_DATA_DIR ?? "/var/lib/mysql"}/elera-state`,
+    stateDir: environment.ELERA_CONFIG_STATE_DIR ?? "/var/lib/elera",
   });
   const memoryObservationStore = createObservationStore();
   const observationStore = environment.ELERA_OBSERVATION_STATE_PATH

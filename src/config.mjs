@@ -8,11 +8,7 @@ const persistedIntent = (environment) => {
   try {
     return JSON.parse(
       readFileSync(
-        join(
-          environment.ELERA_CONFIG_STATE_DIR ??
-            `${environment.MARIADB_DATA_DIR ?? "/var/lib/mysql"}/elera-state`,
-          "active.intent.json",
-        ),
+        join(environment.ELERA_CONFIG_STATE_DIR ?? "/var/lib/elera", "active.intent.json"),
         "utf8",
       ),
     );

@@ -94,11 +94,11 @@ test("builds the shared runtime context and callback links", () => {
   expect(cold.coldBootstrapLocal()).toBeUndefined();
 });
 
-test("uses the data-directory state path when no override exists", () => {
+test("uses the service state path when no override exists", () => {
   const data = makeDependencies();
   delete data.dependencies.environment.ELERA_CONFIG_STATE_DIR;
   createSupervisorApplicationContext(data.dependencies);
   expect(data.dependencies.createRestartMarker).toHaveBeenCalledWith(
-    expect.objectContaining({ path: "/data/elera-state/clean-restart.json" }),
+    expect.objectContaining({ path: "/var/lib/elera/clean-restart.json" }),
   );
 });
