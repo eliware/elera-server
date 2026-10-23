@@ -33,6 +33,13 @@ test("exports and restores every metadata table, including scoped tokens", async
   ]);
   await expect(snapshot.restoreMetadataSnapshot(data)).resolves.toMatchObject({ scopedTokens: 1 });
   expect(calls.some((sql) => sql.includes("DELETE FROM `elera_meta`.`scoped_tokens`"))).toBe(true);
+  expect(
+    calls.some((sql) =>
+      /^INSERT INTO `elera_meta`\.`(?:metadata|applications|managed_databases|identities|grants_policy|scoped_tokens|artifacts|routing_assignments)` \([^)]*\) VALUES \(/.test(
+        sql,
+      ),
+    ),
+  ).toBe(true);
 });
 
 test("rejects malformed metadata snapshots", async () => {
