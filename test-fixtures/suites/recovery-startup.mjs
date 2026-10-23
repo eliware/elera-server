@@ -115,7 +115,7 @@ test("mounts recovery routes on the shared listener without creating a temporary
     log: {},
     environment: { ROOT_TOKEN: "token" },
     mariaProcess: {},
-    probes: { setStartupHandler },
+    probes: { setStartupHandler, start: jest.fn(async () => {}) },
   });
   expect(setStartupHandler).toHaveBeenCalledWith("routes");
   expect(result.startupServer).toBeUndefined();
@@ -145,7 +145,7 @@ test("keeps the shared listener open for a clean-restart join", async () => {
     log: {},
     environment: {},
     mariaProcess: {},
-    probes: { setStartupHandler },
+    probes: { setStartupHandler, start: jest.fn(async () => {}) },
     restartMarker: { consume },
   });
   expect(result.startupDecision.mode).toBe("join");

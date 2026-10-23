@@ -78,6 +78,11 @@ export async function prepareRecoveryStartupServices({
     httpPort: config.httpPort,
     log,
   });
+  if (services.unifiedListener) {
+    await probes.start(config.httpPort, "0.0.0.0", () =>
+      log.info("HTTP listener started", { port: config.httpPort }),
+    );
+  }
   services.recoveryCompletion = evidenceService.completion;
   services.recoveryLease = evidenceService.lease;
   services.startupServer = evidenceService.server;
@@ -95,7 +100,7 @@ export async function prepareRecoveryStartupServices({
     reason: services.startupDecision.reason,
   });
   if (services.startupDecision.mode === "join") {
-    if (!services.unifiedListener) await services.startupServer.close();
+    await services.startupServer?.close?.();
     services.joined = true;
   }
   return services;

@@ -18,13 +18,20 @@ jest.unstable_mockModule("../../../../src/runtime/startup/decision-wiring.mjs", 
   ),
 }));
 jest.unstable_mockModule("../../../../src/runtime/clean-restart/recovery.mjs", () => ({
-  resolveCleanRestart: jest.fn(async ({ restartMarker }) => restartMarker ?? undefined),
+  resolveCleanRestart: jest.fn(async ({ restartMarker }) => {
+    captured.events?.push("resolve");
+    return restartMarker ?? undefined;
+  }),
 }));
 jest.unstable_mockModule("../../../../src/runtime/recovery/evidence-service.mjs", () => ({
   startRecoveryEvidenceService: jest.fn(async (options) => {
     captured.evidence = options;
     if (options.unifiedListener) options.setStartupHandler?.("routes");
-    return { completion: "completion", server, routes: "routes" };
+    return {
+      completion: "completion",
+      server: options.unifiedListener ? undefined : server,
+      routes: "routes",
+    };
   }),
 }));
 const { prepareRecoveryStartupServices } =
@@ -37,7 +44,7 @@ const base = {
   health: {},
   recoveryState: { set: jest.fn() },
   recoveryAudit: {},
-  log: { debug: jest.fn() },
+  log: { debug: jest.fn(), info: jest.fn() },
   mariaProcess: {},
   getMariaProcess: () => ({}),
   environment: {},
@@ -70,13 +77,31 @@ test("starts recovery evidence and marks a clean join", async () => {
 });
 
 test("uses an existing listener for evidence routes and a normal recovery plan", async () => {
-  const setStartupHandler = jest.fn();
+  captured.events = [];
+  server.close.mockClear();
+  const setStartupHandler = jest.fn(() => captured.events.push("handler"));
   const result = await prepareRecoveryStartupServices({
     ...base,
     config: { ...base.config, elera: true },
-    probes: { setStartupHandler },
+    restartMarker: { mode: "join" },
+    probes: {
+      setStartupHandler,
+      start: jest.fn(async (_port, _host, callback) => {
+        captured.events.push("start");
+        callback();
+      }),
+    },
   });
-  expect(result).toMatchObject({ needsPlan: true, unifiedListener: true });
+  expect(result).toMatchObject({ needsPlan: true, unifiedListener: true, joined: true });
   expect(setStartupHandler).toHaveBeenCalledWith("routes");
   expect(captured.evidence.unifiedListener).toBe(true);
+  expect(captured.events).toEqual(["handler", "start", "resolve"]);
+  expect(server.close).not.toHaveBeenCalled();
+  await expect(
+    prepareRecoveryStartupServices({
+      ...base,
+      config: { ...base.config, elera: true },
+      probes: { setStartupHandler: jest.fn(), start: jest.fn() },
+    }),
+  ).resolves.toMatchObject({ needsPlan: true, unifiedListener: true });
 });
