@@ -76,6 +76,34 @@ test("handles all managed metadata, database, identity, and token routes", async
   ).toBe(true);
   expect(await handleManagedRoute({ ...context("GET", "/other"), managed: undefined })).toBe(false);
 });
+
+test("returns SQL connection metadata and a root full metadata snapshot", async () => {
+  const root = context("GET", "/api/v1/sql/connection");
+  root.managed.sqlConnection = jest.fn(() => ({ host: "node", username: "elera_root" }));
+  root.auth = { root: true };
+  await expect(handleManagedRoute(root)).resolves.toBe(true);
+  expect(root.response.json).toHaveBeenCalledWith(200, {
+    ok: true,
+    operation: "sql.connection",
+    data: { host: "node", username: "elera_root" },
+  });
+  expect(await handleManagedRoute({ ...root, auth: null })).toBe(false);
+
+  const exportRoute = context("GET", "/api/v1/metadata/export");
+  exportRoute.auth = { root: true };
+  exportRoute.managed.listDatabaseRecords = jest.fn(async () => [{ physical_name: "app_db" }]);
+  exportRoute.managed.exportMetadataSnapshot = jest.fn(async () => ({ format: 1 }));
+  await handleManagedRoute(exportRoute);
+  expect(exportRoute.response.json).toHaveBeenCalledWith(200, {
+    ok: true,
+    operation: "metadata.export",
+    data: {
+      databases: [{ physical_name: "app_db" }],
+      identities: [],
+      metadataSnapshot: { format: 1 },
+    },
+  });
+});
 test("rejects scoped routes when the optional scope collection is absent", async () => {
   const c = context("GET", "/api/v1/databases");
   expect(await handleManagedRoute({ ...c, auth: {} })).toBe(false);

@@ -87,3 +87,29 @@ test("handles explicitly absent optional account methods and alternate desired f
   };
   expect((await reconciler.plan(desired)).changes).toHaveLength(2);
 });
+
+test("restores a full metadata snapshot and original MariaDB accounts", async () => {
+  const calls = [];
+  const managed = {
+    listDatabases: async () => [],
+    listIdentities: async () => [],
+    restoreMetadataSnapshot: async (snapshot) => (
+      calls.push(["metadata", snapshot]),
+      { restored: true }
+    ),
+  };
+  const accounts = {
+    list: async () => [],
+    restoreAccounts: async (records) => (calls.push(["accounts", records]), { restored: true }),
+  };
+  const reconciler = createMetadataReconciler({ managed, accounts });
+  const desired = {
+    metadataSnapshot: { format: 1, tables: {} },
+    accounts: [{ user: "elera_t_1", grants: ["GRANT SELECT ON `app_db`.* TO `elera_t_1`"] }],
+  };
+  await expect(reconciler.apply(desired, { confirm: true })).resolves.toMatchObject({ applied: 2 });
+  expect(calls).toEqual([
+    ["metadata", desired.metadataSnapshot],
+    ["accounts", desired.accounts],
+  ]);
+});

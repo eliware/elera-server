@@ -20,6 +20,26 @@ test("requires the metadata query callback", () => {
   ).toBeDefined();
 });
 
+test("returns SQL endpoints for root and persistent scoped token accounts", async () => {
+  const managed = createManagedMetadata({
+    query: async () => [[]],
+    identity: { name: "node.example.test" },
+    tokenAccounts: { usernameFor: (tokenId) => `elera_t_${tokenId}` },
+  });
+  expect(managed.sqlConnection({ root: true })).toEqual({
+    host: "node.example.test",
+    port: 3306,
+    username: "elera_root",
+  });
+  expect(managed.sqlConnection({ tokenId: "42" })).toEqual({
+    host: "node.example.test",
+    port: 3306,
+    username: "elera_t_42",
+  });
+  expect(await managed.listDatabaseRecords()).toEqual([]);
+  expect(() => managed.sqlConnection({})).toThrow("token SQL account is unavailable");
+});
+
 test("manages databases, identities, and scoped tokens without exposing policy SQL", async () => {
   const calls = [];
   let tokenHash;

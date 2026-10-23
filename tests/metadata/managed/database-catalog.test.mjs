@@ -4,7 +4,22 @@ import { createManagedDatabaseCatalog } from "../../../src/metadata/managed/data
 
 test("creates a managed database catalog", () => {
   const catalog = createManagedDatabaseCatalog({ query: async () => [[]], q: async () => [[]] });
-  expect(Object.keys(catalog)).toEqual(["createDatabase", "listDatabases", "deleteDatabase"]);
+  expect(Object.keys(catalog)).toEqual([
+    "createDatabase",
+    "listDatabases",
+    "listDatabaseRecords",
+    "deleteDatabase",
+  ]);
+});
+
+test("lists physical database records for root backups", async () => {
+  const catalog = createManagedDatabaseCatalog({
+    query: async () => [[]],
+    q: async () => [[{ name: "primary", physical_name: "elera_db_42" }]],
+  });
+  await expect(catalog.listDatabaseRecords()).resolves.toEqual([
+    { name: "primary", physical_name: "elera_db_42" },
+  ]);
 });
 
 test("confirms database deletion and returns dry-run results", async () => {

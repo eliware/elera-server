@@ -57,6 +57,15 @@ test("accepts explicit routes and a matching node identity", async () => {
   ).resolves.toMatchObject({ routes, ports: [3306] });
 });
 
+test("leases the persistent token account instead of stored identity credentials", async () => {
+  const tokenAccounts = { usernameFor: (tokenId) => `elera_t_${tokenId}` };
+  const { leases, box } = createLease({ tokenAccounts });
+  await expect(
+    leases.lease({ identity: "runtime", tokenId: "42", sqlToken: "runtime-token" }),
+  ).resolves.toMatchObject({ username: "elera_t_42", password: "runtime-token" });
+  expect(box.open).not.toHaveBeenCalled();
+});
+
 test("rejects invalid identities, missing encryption, and absent credentials", async () => {
   const { leases } = createLease();
   await expect(leases.lease({ identity: "" })).rejects.toThrow("identity is invalid");

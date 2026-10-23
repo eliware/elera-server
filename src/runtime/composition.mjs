@@ -7,6 +7,7 @@ import { createApplicationService } from "../metadata/applications.mjs";
 import { createMetadataReconciler } from "../metadata/reconcile.mjs";
 import { createArtifactStore } from "../metadata/artifacts.mjs";
 import { createManagedAccounts } from "../accounts/managed.mjs";
+import { createTokenSqlAccounts } from "../accounts/token-sql-accounts.mjs";
 
 export function createSupervisorComposition({
   environment = process.env,
@@ -33,12 +34,14 @@ export function createSupervisorComposition({
       })
     : memoryObservationStore;
   const metadata = createMetadataService({ query });
+  const tokenAccounts = createTokenSqlAccounts({ query });
   const managed = createManagedMetadata({
     query,
     identity,
+    tokenAccounts,
     credentialKey: environment.ELERA_CREDENTIAL_KEY,
   });
-  const applications = createApplicationService({ query });
+  const applications = createApplicationService({ query, tokenAccounts });
   const managedAccounts = createManagedAccounts({ query });
   const reconciler = createMetadataReconciler({ managed, accounts: managedAccounts });
   const artifactStore = createArtifactStore({ query: optionalQuery });
@@ -49,6 +52,7 @@ export function createSupervisorComposition({
     managed,
     applications,
     managedAccounts,
+    tokenAccounts,
     reconciler,
     artifactStore,
   };

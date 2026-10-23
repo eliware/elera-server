@@ -66,6 +66,8 @@ export async function handleRoutingRoute({
         identity: requestedNodeIdentity,
         application: auth?.application,
         database: auth?.database,
+        tokenId: auth?.tokenId,
+        sqlToken: auth?.sqlToken,
       }),
     });
     return true;

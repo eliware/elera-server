@@ -43,3 +43,38 @@ test("lists managed accounts and reports accounts without grants as unverified",
     grants: [],
   });
 });
+
+test("restores original authentication definitions and account grants", async () => {
+  const calls = [];
+  const accounts = createManagedAccounts({
+    query: async (sql) => (calls.push(sql), [[]]),
+  });
+  await expect(
+    accounts.restoreAccounts([
+      {
+        user: "app",
+        host: "%",
+        createUser: "CREATE USER `app`@`%` IDENTIFIED BY PASSWORD '*hash'",
+        grants: ["GRANT SELECT ON `app_db`.* TO `app`@`%`"],
+      },
+      { user: "legacy", host: "localhost" },
+    ]),
+  ).resolves.toEqual({ restored: 2 });
+  expect(calls).toEqual([
+    "CREATE OR REPLACE USER `app`@`%` IDENTIFIED BY PASSWORD '*hash'",
+    "GRANT SELECT ON `app_db`.* TO `app`@`%`",
+    "CREATE USER IF NOT EXISTS 'legacy'@'localhost'",
+    "FLUSH PRIVILEGES",
+  ]);
+});
+
+test("validates restored account definitions and grants", async () => {
+  const accounts = createManagedAccounts({ query: async () => [[]] });
+  await expect(accounts.restoreAccounts({})).rejects.toThrow("account records are required");
+  await expect(
+    accounts.restoreAccounts([{ user: "app", createUser: "CREATE USER `other`@`%`" }]),
+  ).rejects.toThrow("invalid user definition");
+  await expect(
+    accounts.restoreAccounts([{ user: "app", grants: ["GRANT SELECT; DROP DATABASE x"] }]),
+  ).rejects.toThrow("invalid grant statement");
+});

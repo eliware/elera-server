@@ -9,14 +9,24 @@ const send = (response, status, body) => response.json(status, body);
 
 export async function handleManagedRoute({ method, path, request, response, managed, auth }) {
   if (!managed) return false;
+  if (method === "GET" && path === "/api/v1/sql/connection") {
+    if (!auth) return false;
+    send(response, 200, {
+      ok: true,
+      operation: "sql.connection",
+      data: managed.sqlConnection(auth),
+    });
+    return true;
+  }
   if (method === "GET" && path === "/api/v1/metadata/export") {
     if (!allowed(auth, "metadata:read")) return false;
     send(response, 200, {
       ok: true,
       operation: "metadata.export",
       data: {
-        databases: await managed.listDatabases(),
+        databases: auth?.root ? await managed.listDatabaseRecords() : await managed.listDatabases(),
         identities: await managed.listIdentities(),
+        ...(auth?.root ? { metadataSnapshot: await managed.exportMetadataSnapshot() } : {}),
       },
     });
     return true;
