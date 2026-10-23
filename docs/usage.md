@@ -34,7 +34,13 @@ Use [.env.example](../.env.example) as a placeholder template. Replace every pla
 | `ELERA_EXPLICIT_START_MODE`    | None                               | Explicit `bootstrap` or `join` start mode. |
 | `SUPERVISOR_INTENT_JSON`       | Persisted intent or default intent | Optional JSON supervisor intent.           |
 
-Set `ROOT_TOKEN` before you call the control API. Set `ELERA_PEER_TOKEN` for peer traffic. The supervisor uses `ROOT_TOKEN` when no peer token is set. Recovery startup fails closed when both tokens are unset. Set `ELERA_CREDENTIAL_KEY` before you use managed credentials.
+Set `ROOT_TOKEN` before cluster startup. Cluster members share this long-lived token. It bootstraps the cluster before managed tokens exist. Keep it for administrative operations after initialization.
+
+Peer traffic uses `ELERA_PEER_TOKEN` when set. If unset, peers use `ROOT_TOKEN`. Set the same root token on every cluster member. Recovery startup fails closed when both tokens are unset.
+
+The root token maps to a long-lived MariaDB account with global privileges. Use its routing bundle for full native MariaDB backups and restores. These operations do not require per-application credentials or temporary accounts.
+
+Set `ELERA_CREDENTIAL_KEY` before you use managed credentials.
 
 The supervisor sets `ELERA_CLUSTER_BOOTSTRAP` for MariaDB during an approved recovery handoff.
 Do not set this internal value in the container environment.

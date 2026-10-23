@@ -104,9 +104,14 @@ The bearer token is required in the WebSocket handshake `Authorization` header.
 Query-string token authentication is not supported.
 ```
 
-`ROOT_TOKEN` is a break-glass credential for first boot, cluster bootstrap,
-metadata initialization, full restore, and token administration. It is not
-stored in MariaDB.
+`ROOT_TOKEN` is a pre-shared, long-lived credential for first boot, cluster
+bootstrap, administrative operations, metadata initialization, full backup,
+and full restore. Peer requests use it when `ELERA_PEER_TOKEN` is unset.
+
+The bearer token itself is not stored in MariaDB. It maps to a long-lived SQL
+account with global privileges. An authenticated root routing bundle supplies
+that account's credentials to native MariaDB clients. Full backup and restore
+operations do not require per-application or temporary accounts.
 
 Usual tokens are stored as hashes and are bound to resources and scopes.
 Plaintext tokens are returned only once when created or rotated.
