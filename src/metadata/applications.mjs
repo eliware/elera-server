@@ -9,7 +9,7 @@ const name = (value, label) => {
 };
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 
-export function createApplicationService({ query, tokenAccounts, database = "elera_meta" } = {}) {
+export function createApplicationService({ query, database = "elera_meta" } = {}) {
   if (typeof query !== "function") throw new TypeError("query function is required");
   const q = (sql, params) => query(sql.replaceAll("elera_meta", `\`${database}\``), params);
   return {
@@ -36,22 +36,12 @@ export function createApplicationService({ query, tokenAccounts, database = "ele
         `SELECT application_id FROM elera_meta.applications WHERE name=${literal(application)}`,
       );
       if (!apps[0]) throw Object.assign(new Error("application not found"), { statusCode: 404 });
-      const [existing] = await q(
-        `SELECT token_id FROM elera_meta.scoped_tokens WHERE application_name=${literal(application)} AND name=${literal(tokenName)}`,
-      );
-      const tokenId = existing[0]?.token_id ?? String(generateSnowflake());
+      const tokenId = String(generateSnowflake());
       const token = `elera_${randomBytes(32).toString("base64url")}`;
       await q(
         `INSERT INTO elera_meta.scoped_tokens (token_id, name, token_hash, application_name, identity_name, scopes_json) VALUES (${literal(tokenId)}, ${literal(tokenName)}, ${literal(hash(token))}, ${literal(application)}, NULL, ${literal(JSON.stringify(["app:admin"]))}) ON DUPLICATE KEY UPDATE token_hash=VALUES(token_hash), active=TRUE, rotated_at=CURRENT_TIMESTAMP`,
         [],
       );
-      await tokenAccounts?.create({
-        tokenId,
-        token,
-        application,
-        scopes: ["app:admin"],
-        admin: true,
-      });
       return {
         tokenId,
         token,

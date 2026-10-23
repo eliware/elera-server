@@ -6,7 +6,7 @@ test("grants root scope for the root token", async () => {
     { headers: { authorization: "Bearer root" } },
     { token: "root" },
   );
-  expect(result).toEqual({ root: true, scopes: ["*"], sqlToken: "root" });
+  expect(result).toEqual({ root: true, scopes: ["*"] });
 });
 
 test("returns scoped credentials from managed metadata", async () => {
@@ -16,7 +16,7 @@ test("returns scoped credentials from managed metadata", async () => {
     { headers: { authorization: "Bearer scoped" } },
     { token: "root", managed: { authenticate } },
   );
-  expect(result).toEqual({ ...scoped, sqlToken: "scoped" });
+  expect(result).toBe(scoped);
   expect(authenticate).toHaveBeenCalledWith("scoped");
 });
 
@@ -27,7 +27,7 @@ test("uses metadata when managed metadata is absent", async () => {
     { headers: { authorization: "Bearer scoped" } },
     { token: "root", metadata: { authenticate } },
   );
-  expect(result).toEqual({ ...scoped, sqlToken: "scoped" });
+  expect(result).toBe(scoped);
   expect(authenticate).toHaveBeenCalledWith("scoped");
 });
 

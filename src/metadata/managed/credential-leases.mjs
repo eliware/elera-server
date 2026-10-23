@@ -1,16 +1,9 @@
 import { literal } from "../../accounts/sql.mjs";
 import { validFqdn, validName } from "./validation.mjs";
 
-export function createManagedCredentialLeases({ q, box, identity, tokenAccounts }) {
+export function createManagedCredentialLeases({ q, box, identity }) {
   return {
-    async lease({
-      identity: credentialIdentity,
-      routes = {},
-      nodeIdentity,
-      ports,
-      tokenId,
-      sqlToken,
-    }) {
+    async lease({ identity: credentialIdentity, routes = {}, nodeIdentity, ports }) {
       validName(credentialIdentity, "identity");
       if (!box) throw new Error("credential encryption is not configured");
       const runtimeNode = validFqdn(identity?.name, "runtime identity");
@@ -33,8 +26,8 @@ export function createManagedCredentialLeases({ q, box, identity, tokenAccounts 
         database: row.database,
         physicalDatabase: row.physical_database,
         identity: credentialIdentity,
-        username: tokenId ? tokenAccounts.usernameFor(tokenId) : row.username,
-        password: tokenId ? sqlToken : box.open(row.credential_ciphertext),
+        username: row.username,
+        password: box.open(row.credential_ciphertext),
         routes: { primary, balanced: routes.balanced ?? primary },
         nodeIdentity: runtimeNode,
         ports,

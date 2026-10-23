@@ -25,16 +25,6 @@ test("initializes metadata and verifies the schema", async () => {
   expect(calls.some((sql) => sql.includes("CREATE DATABASE"))).toBe(true);
   expect((await service.verify()).verified).toBe(true);
 });
-
-test("creates the persistent root SQL account during metadata initialization", async () => {
-  const calls = [];
-  const service = createMetadataService({
-    query: async (sql) => (calls.push(sql), [[]]),
-  });
-  const result = await service.initialize({ ROOT_TOKEN: "root-test-value" });
-  expect(result.rootSqlAccount.username).toBe("elera_root");
-  expect(calls.some((sql) => sql.includes("GRANT ALL PRIVILEGES ON *.*"))).toBe(true);
-});
 test("reports uninitialized metadata and validates dependencies", async () => {
   expect(() => createMetadataService({})).toThrow("query function");
   const service = createMetadataService({

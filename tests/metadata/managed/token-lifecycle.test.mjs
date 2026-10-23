@@ -18,7 +18,6 @@ test("resolves scoped tokens to their application, database, identity, and scope
       return [
         [
           {
-            tokenId: "42",
             name: "runtime-token",
             application: "payments",
             database: "billing",
@@ -34,7 +33,6 @@ test("resolves scoped tokens to their application, database, identity, and scope
 
   await expect(managed.authenticate(token)).resolves.toEqual({
     name: "runtime-token",
-    tokenId: "42",
     application: "payments",
     database: "billing",
     physicalDatabase: "elera_db_42",
@@ -62,7 +60,6 @@ test("keeps app-admin tokens application-scoped without assigning a database ide
     query: async () => [
       [
         {
-          tokenId: "admin-1",
           name: "app-admin-token",
           application: "payments",
           database: null,
@@ -76,7 +73,6 @@ test("keeps app-admin tokens application-scoped without assigning a database ide
 
   await expect(managed.authenticate(token)).resolves.toEqual({
     name: "app-admin-token",
-    tokenId: "admin-1",
     application: "payments",
     database: null,
     identity: null,
@@ -103,58 +99,11 @@ test("issues and revokes scoped tokens with default scopes", async () => {
     identity: "worker",
     scopes: [],
   });
-  expect(queries[2]).toContain("[]");
+  expect(queries[1]).toContain("[]");
   await expect(lifecycle.revokeToken()).rejects.toThrow("token is invalid");
-  await expect(lifecycle.revokeToken(undefined)).rejects.toThrow("token is invalid");
-  await expect(lifecycle.revokeToken(null)).rejects.toThrow("token is invalid");
   await expect(
     lifecycle.revokeToken({ tokenName: "worker-token", application: "payments" }),
   ).resolves.toMatchObject({ revoked: true });
-  const noStoredToken = createManagedTokenLifecycle({
-    q: async (sql) => (sql.startsWith("SELECT") ? [[{ token_id: "42" }]] : [[]]),
-  });
-  await expect(
-    noStoredToken.revokeToken({ tokenName: "worker-token", application: "payments" }),
-  ).resolves.toMatchObject({ revoked: true });
-});
-
-test("creates and revokes a MariaDB account with the persistent token", async () => {
-  const tokenAccounts = { create: jest.fn(), revoke: jest.fn() };
-  let tokenHash;
-  const q = jest.fn(async (sql) => {
-    if (sql.includes("FROM elera_meta.identities"))
-      return [[{ application: "payments", database: "billing" }]];
-    if (sql.includes("SELECT token_id")) return [[{ token_id: "42" }]];
-    if (sql.includes("SELECT t.token_id"))
-      return [
-        [
-          {
-            tokenId: "42",
-            name: "persistent-worker",
-            application: "payments",
-            database: "billing",
-            identity: "worker",
-            token_hash: tokenHash,
-            scopes_json: '["database:read"]',
-          },
-        ],
-      ];
-    return [[]];
-  });
-  const lifecycle = createManagedTokenLifecycle({ q, tokenAccounts });
-  const issued = await lifecycle.issueToken({
-    tokenName: "persistent-worker",
-    application: "payments",
-    identity: "worker",
-    scopes: ["database:read"],
-  });
-  tokenHash = createHash("sha256").update(issued.token).digest("hex");
-  await expect(lifecycle.authenticate(issued.token)).resolves.toMatchObject({ tokenId: "42" });
-  await lifecycle.revokeToken({ tokenName: "persistent-worker", application: "payments" });
-  expect(tokenAccounts.create).toHaveBeenCalledWith(
-    expect.objectContaining({ tokenId: "42", token: issued.token, application: "payments" }),
-  );
-  expect(tokenAccounts.revoke).toHaveBeenCalledWith("42");
 });
 
 test("rejects invalid token owners and missing identities", async () => {

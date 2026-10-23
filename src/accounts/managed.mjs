@@ -32,30 +32,6 @@ export function createManagedAccounts({ query } = {}) {
       await query("FLUSH PRIVILEGES");
       return { user, host, database, grants, password };
     },
-    async restoreAccounts(records) {
-      if (!Array.isArray(records)) throw new TypeError("account records are required");
-      for (const record of records) {
-        const user = accountName(record.user);
-        const host = String(record.host ?? "%");
-        if (record.createUser) {
-          const quoted = `CREATE USER ${literal(user)}@${literal(host)} `;
-          const identified = `CREATE USER \`${user.replaceAll("`", "``")}\`@\`${host.replaceAll("`", "``")}\` `;
-          if (
-            (!record.createUser.startsWith(quoted) && !record.createUser.startsWith(identified)) ||
-            /;|--|\/\*/.test(record.createUser)
-          )
-            throw Object.assign(new Error("invalid user definition"), { statusCode: 400 });
-          await query(record.createUser.replace(/^CREATE USER/i, "CREATE OR REPLACE USER"));
-        } else await query(`CREATE USER IF NOT EXISTS ${literal(user)}@${literal(host)}`);
-        for (const grant of record.grants ?? []) {
-          if (typeof grant !== "string" || !/^GRANT\s+/i.test(grant) || /;|--|\/\*/.test(grant))
-            throw Object.assign(new Error("invalid grant statement"), { statusCode: 400 });
-          await query(grant);
-        }
-      }
-      await query("FLUSH PRIVILEGES");
-      return { restored: records.length };
-    },
     async revoke({ user, host = "%" }) {
       accountName(user);
       await query(`DROP USER IF EXISTS ${literal(user)}@${literal(host)}`);

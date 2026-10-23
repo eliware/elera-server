@@ -18,11 +18,11 @@ export function createMetadataReconciler({ managed, accounts } = {}) {
     const currentIdentities = new Map(current.identities.map((item) => [identityKey(item), item]));
     const currentAccounts = new Set(current.accounts.map((item) => `${item.user}:${item.host}`));
     const changes = [];
-    for (const database of desired.metadataSnapshot ? [] : (desired.databases ?? [])) {
+    for (const database of desired.databases ?? []) {
       if (!currentDatabases.has(database.database ?? database.name))
         changes.push({ operation: "database.create", data: database });
     }
-    for (const identity of desired.metadataSnapshot ? [] : (desired.identities ?? [])) {
+    for (const identity of desired.identities ?? []) {
       if (!currentIdentities.has(identityKey(identity)))
         changes.push({ operation: "identity.create", data: identity });
     }
@@ -38,13 +38,6 @@ export function createMetadataReconciler({ managed, accounts } = {}) {
       throw Object.assign(new Error("reconcile apply requires confirm: true"), { statusCode: 409 });
     const before = await plan(desired);
     const results = [];
-    const accountRows = desired.accounts ?? [];
-    const restoringAccounts =
-      accountRows.length > 0 &&
-      accountRows.every(
-        (item) =>
-          Array.isArray(item.grants) && item.grants.every((grant) => /^GRANT\s+/i.test(grant)),
-      );
     for (const change of before.changes) {
       if (change.operation === "database.create")
         results.push(
@@ -63,12 +56,9 @@ export function createMetadataReconciler({ managed, accounts } = {}) {
             grants: change.data.grants,
           }),
         );
-      if (change.operation === "account.create" && !restoringAccounts)
+      if (change.operation === "account.create")
         results.push(await accounts.provision(change.data));
     }
-    if (desired.metadataSnapshot)
-      results.push(await managed.restoreMetadataSnapshot(desired.metadataSnapshot));
-    if (restoringAccounts) results.push(await accounts.restoreAccounts(accountRows));
     return { ...before, results, applied: results.length };
   }
 
