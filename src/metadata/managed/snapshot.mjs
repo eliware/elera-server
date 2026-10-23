@@ -41,7 +41,7 @@ export function createManagedMetadataSnapshot({ query, database = "elera_meta" }
           if (!columns.length || columns.some((column) => !/^[A-Za-z_][A-Za-z0-9_]*$/.test(column)))
             throw Object.assign(new Error("metadata snapshot row is invalid"), { statusCode: 400 });
           await query(
-            `INSERT INTO ${schema}.${identifier(table)} (${columns.map(identifier).join(",")}) VALUES (${columns.map((key) => value(row[key])).join(",")})`,
+            `INSERT INTO ${schema}.${columns.map(identifier).join(",")} VALUES (${columns.map((key) => value(row[key])).join(",")})`,
           );
         }
       }
