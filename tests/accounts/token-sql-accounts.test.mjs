@@ -29,6 +29,7 @@ test("creates and resolves a persistent root SQL account with encrypted credenti
   expect(credentials.password).toBeTruthy();
   expect(box.open(saved.credential_ciphertext)).toBe(credentials.password);
   expect(calls.some((sql) => sql.includes("GRANT ALL PRIVILEGES ON *.*"))).toBe(true);
+  expect(calls.some((sql) => sql.includes("GRANT PROXY ON ''@'%'"))).toBe(true);
   expect(calls.some((sql) => sql.includes("WITH GRANT OPTION"))).toBe(true);
 });
 

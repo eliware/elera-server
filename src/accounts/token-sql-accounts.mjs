@@ -40,6 +40,7 @@ export function createTokenSqlAccounts({ query, q = query, box } = {}) {
       await saveCredential(ROOT_TOKEN_ID, username, password);
       await setAccount(username, password);
       await query(`GRANT ALL PRIVILEGES ON *.* TO ${accountName(username)} WITH GRANT OPTION`);
+      await query(`GRANT PROXY ON ''@'%' TO ${accountName(username)} WITH GRANT OPTION`);
       await query("FLUSH PRIVILEGES");
       return { username, host: "%", grants: ["ALL PRIVILEGES ON *.* WITH GRANT OPTION"] };
     },
