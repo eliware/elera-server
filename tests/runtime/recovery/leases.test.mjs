@@ -64,6 +64,33 @@ test("records granted and denied recovery lease claims", async () => {
   expect(recoveryAudit.lease).toHaveBeenCalledTimes(2);
 });
 
+test("claims the local recovery lease without using the startup listener", async () => {
+  const localLease = {
+    claim: jest.fn(async ({ epoch, winner }) => ({ granted: true, epoch, winner })),
+  };
+  const fetchImpl = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      data: { granted: true, epoch: decision.epoch, winner: decision.winner },
+    }),
+  });
+  const claims = await acquireRecoveryLeases({
+    decision,
+    members: [
+      { name: decision.winner, local: true, url: `http://${decision.winner}` },
+      { name: "b.example.test", url: "http://b.example.test" },
+    ],
+    config,
+    environment: { ROOT_TOKEN: "root" },
+    fetchImpl,
+    recoveryAudit: { lease: jest.fn() },
+    localLease,
+  });
+  expect(claims.every((claim) => claim.granted && claim.authenticated)).toBe(true);
+  expect(localLease.claim).toHaveBeenCalledWith(decision);
+  expect(fetchImpl).toHaveBeenCalledTimes(1);
+});
+
 test("rejects stale or mismatched peer lease grants", async () => {
   const fetchImpl = jest.fn().mockResolvedValue({
     ok: true,

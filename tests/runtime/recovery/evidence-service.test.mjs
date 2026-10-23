@@ -95,7 +95,7 @@ test("composes evidence, completion, lease, and server dependencies", () => {
       createLease,
       createServer,
     }),
-  ).toEqual({ evidence, completion, server });
+  ).toEqual({ evidence, completion, lease, server });
   expect(createLease).toHaveBeenCalledWith("/run/elera/cold-recovery.lease");
 });
 

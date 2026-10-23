@@ -79,6 +79,7 @@ export async function prepareRecoveryStartupServices({
     log,
   });
   services.recoveryCompletion = evidenceService.completion;
+  services.recoveryLease = evidenceService.lease;
   services.startupServer = evidenceService.server;
   services.startupDecision =
     (await resolveCleanRestart({

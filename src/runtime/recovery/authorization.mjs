@@ -10,6 +10,7 @@ export async function authorizeSupervisorRecovery({
   config,
   intentState,
   recoveryProtocol,
+  recoveryLease,
   recoveryState,
   recoveryAudit,
   log,
@@ -49,6 +50,7 @@ export async function authorizeSupervisorRecovery({
     environment,
     fetchImpl,
     recoveryAudit,
+    localLease: recoveryLease,
   });
   if (claims.filter((claim) => claim.granted).length < Math.floor(members.length / 2) + 1) {
     const blocked = {

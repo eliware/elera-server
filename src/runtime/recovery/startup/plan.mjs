@@ -17,6 +17,7 @@ export async function resolveSupervisorStartupPlan({
   intentState,
   log,
   startupServer,
+  recoveryLease,
   unifiedListener,
 } = {}) {
   const recoveryPlan = await resolveRecoveryPlan({ recoveryProtocol, startupTimeoutMs });
@@ -33,6 +34,7 @@ export async function resolveSupervisorStartupPlan({
     config,
     intentState,
     recoveryProtocol,
+    recoveryLease,
     recoveryState,
     recoveryAudit,
     log,

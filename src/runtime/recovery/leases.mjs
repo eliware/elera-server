@@ -5,6 +5,7 @@ export async function acquireRecoveryLeases({
   environment,
   fetchImpl,
   recoveryAudit,
+  localLease,
 }) {
   const claims = await Promise.all(
     members.map(async (node) => {
@@ -13,6 +14,15 @@ export async function acquireRecoveryLeases({
       if (parsed.hostname !== node.name)
         throw new Error(`recovery lease URL ${url} does not match configured member ${node.name}`);
       try {
+        if (node.local && localLease?.claim) {
+          const claim = await localLease.claim({ epoch: decision.epoch, winner: decision.winner });
+          const granted =
+            claim?.granted === true &&
+            claim.epoch === decision.epoch &&
+            claim.winner === decision.winner;
+          recoveryAudit.lease({ node: node.name, granted, epoch: decision.epoch });
+          return leaseClaim(node.name, decision, granted, claim);
+        }
         const response = await fetchImpl(
           `${url.replace(/\/$/, "")}/api/v1/cluster/cold-bootstrap/lease`,
           {

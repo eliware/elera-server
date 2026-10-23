@@ -44,7 +44,9 @@ export function createRecoveryEvidenceService({
     typeof evidence === "function"
       ? createStartupEvidenceRoutes({ evidence, lease, completion, token, log })
       : undefined;
-  return routes ? { evidence, completion, server, routes } : { evidence, completion, server };
+  return routes
+    ? { evidence, completion, lease, server, routes }
+    : { evidence, completion, lease, server };
 }
 
 export async function startRecoveryEvidenceService({

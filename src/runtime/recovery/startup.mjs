@@ -47,11 +47,13 @@ export async function prepareSupervisorRecovery({
       coldRecoveryProtocol: services.coldRecoveryProtocol,
       startupDecision,
       recoveryCompletion: services.recoveryCompletion,
+      recoveryLease: services.recoveryLease,
       startupServer: services.startupServer,
     };
   if (services.needsPlan) {
     const resolved = await resolveSupervisorStartupPlan({
       recoveryProtocol: services.coldRecoveryProtocol,
+      recoveryLease: services.recoveryLease,
       startupTimeoutMs: config.startupTimeoutMs ?? 15000,
       identity,
       recoveryState,
@@ -75,6 +77,7 @@ export async function prepareSupervisorRecovery({
     coldRecoveryProtocol: services.coldRecoveryProtocol,
     startupDecision,
     recoveryCompletion: services.recoveryCompletion,
+    recoveryLease: services.recoveryLease,
     startupServer: services.startupServer,
   };
 }
