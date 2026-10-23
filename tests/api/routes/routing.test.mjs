@@ -79,6 +79,8 @@ test("serves calculated routes, refreshes bundles, and creates a root SQL bundle
     name: undefined,
     application: undefined,
     database: undefined,
+    physicalDatabase: undefined,
+    scopes: undefined,
   });
   const root = context("GET", "/api/v1/routing/bundle");
   expect(await handleRoutingRoute(root)).toBe(true);
@@ -100,6 +102,8 @@ test("resolves a scoped token identity without a query selector and rejects mism
     name: "worker",
     application: "payments",
     database: undefined,
+    physicalDatabase: undefined,
+    scopes: ["credential:issue"],
   });
   const mismatch = context("GET", "/api/v1/routing/bundle");
   mismatch.url = new URL("http://localhost/api/v1/routing/bundle?identity=other");

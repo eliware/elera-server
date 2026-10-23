@@ -74,7 +74,15 @@ test("creates token bundles with the token account and app routing assignment", 
     credentials: { username: "elera_t_42", password: "token-db-secret" },
   });
   await expect(lease({ tokenId: "43" })).resolves.toMatchObject({ identity: "token" });
-  expect(resolved).toEqual(["default", "payments", "default"]);
+  await expect(
+    lease({ tokenId: "44", name: "admin", application: "payments", scopes: ["app:admin"] }),
+  ).resolves.toMatchObject({
+    application: "payments",
+    database: "information_schema",
+    physicalDatabase: "information_schema",
+    credentials: { username: "elera_t_44" },
+  });
+  expect(resolved).toEqual(["default", "payments", "default", "payments"]);
 });
 
 test("uses the local route for a token bundle on a standalone server", async () => {

@@ -6,12 +6,14 @@ import { toBundleVersion } from "../bundle/version.mjs";
 export function createRoutingBundleLease({ managed, identity, environment, selection }) {
   return async function lease(request) {
     const tokenRequest = request.root === true || request.tokenId !== undefined;
+    const appAdmin = !request.root && request.scopes?.includes("app:admin");
     const result = tokenRequest
       ? await managed.sqlConnection(request).then((credentials) => ({
           ...credentials,
           application: request.application ?? "default",
-          database: request.database ?? "elera_meta",
-          physicalDatabase: request.physicalDatabase ?? "elera_meta",
+          database: request.database ?? (appAdmin ? "information_schema" : "elera_meta"),
+          physicalDatabase:
+            request.physicalDatabase ?? (appAdmin ? "information_schema" : "elera_meta"),
           identity: request.identity ?? (request.root ? "root" : (request.name ?? "token")),
           nodeIdentity: identity.name,
           expiresAt: new Date(Date.now() + 3600000).toISOString(),

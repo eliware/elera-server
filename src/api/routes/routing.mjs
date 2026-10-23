@@ -65,8 +65,10 @@ export async function handleRoutingRoute({
         root: auth?.root === true,
         tokenId: auth?.tokenId,
         name: auth?.name,
+        scopes: auth?.scopes,
         application: auth?.application,
         database: auth?.database,
+        physicalDatabase: auth?.physicalDatabase,
       }),
     });
     return true;
