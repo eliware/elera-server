@@ -9,7 +9,7 @@ const safeGrant = (value) =>
 
 export async function exportAccounts(db) {
   const [rows] = await db.query(
-    "SELECT User, Host FROM mysql.user WHERE User NOT IN ('mariadb.sys','mysql','root') ORDER BY User, Host",
+    "SELECT User, Host FROM mysql.user WHERE User NOT IN ('mariadb.sys','mysql','root','elera_root') AND User NOT LIKE 'elera_t_%' ORDER BY User, Host",
   );
   const accounts = [];
   for (const row of rows) {

@@ -8,15 +8,20 @@ const request = (body) => ({
 });
 
 test("exports users and removes credentials from grants", async () => {
+  let queryText = "";
   const db = {
-    query: async (sql) =>
-      sql.startsWith("SELECT")
+    query: async (sql) => {
+      if (!queryText) queryText = sql;
+      return sql.startsWith("SELECT")
         ? [[{ User: "app", Host: "%" }]]
-        : [[{ grant: "GRANT USAGE IDENTIFIED BY PASSWORD 'hash'" }]],
+        : [[{ grant: "GRANT USAGE IDENTIFIED BY PASSWORD 'hash'" }]];
+    },
   };
   await expect(exportAccounts(db)).resolves.toEqual([
     { user: "app", host: "%", grants: ["GRANT USAGE"] },
   ]);
+  expect(queryText).toContain("User NOT LIKE 'elera_t_%'");
+  expect(queryText).toContain("'elera_root'");
 });
 
 test("exports accounts when grant lookup fails or returns no grant", async () => {
