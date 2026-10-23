@@ -20,7 +20,11 @@ export async function resolveSupervisorStartupPlan({
   recoveryLease,
   unifiedListener,
 } = {}) {
-  const recoveryPlan = await resolveRecoveryPlan({ recoveryProtocol, startupTimeoutMs });
+  const recoveryPlan = await resolveRecoveryPlan({
+    recoveryProtocol,
+    startupTimeoutMs,
+    requiredMemberCount: members.length,
+  });
   log.debug?.("Recovery phase: recovery plan resolved", {
     node: identity.name,
     mode: recoveryPlan.mode,

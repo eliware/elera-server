@@ -53,3 +53,44 @@ test("does not retry terminal split-brain or conflicting evidence refusals", asy
   expect(protocol.retry).not.toHaveBeenCalled();
   expect(sleep).not.toHaveBeenCalled();
 });
+
+test("waits for full evidence before returning a bootstrap candidate", async () => {
+  const evidence = [{ node: "a" }, { node: "b" }, { node: "c" }];
+  const protocol = {
+    plan: jest
+      .fn()
+      .mockResolvedValueOnce({ mode: "bootstrap", evidence: evidence.slice(0, 2) })
+      .mockResolvedValueOnce({ mode: "bootstrap", evidence }),
+    retry: jest.fn(async () => {}),
+  };
+  await expect(
+    resolveRecoveryPlan({
+      recoveryProtocol: protocol,
+      startupTimeoutMs: 2000,
+      requiredMemberCount: 3,
+      sleep: jest.fn(async () => {}),
+    }),
+  ).resolves.toMatchObject({ mode: "bootstrap", evidence });
+  expect(protocol.plan).toHaveBeenCalledTimes(2);
+});
+
+test("blocks bootstrap when full member evidence stays unavailable", async () => {
+  const evidence = [{ node: "a" }, { node: "b" }];
+  const protocol = {
+    plan: jest.fn(async () => ({ mode: "bootstrap", evidence })),
+    retry: jest.fn(async () => {}),
+  };
+  await expect(
+    resolveRecoveryPlan({
+      recoveryProtocol: protocol,
+      startupTimeoutMs: 2000,
+      requiredMemberCount: 3,
+      sleep: jest.fn(async () => {}),
+    }),
+  ).resolves.toMatchObject({
+    mode: "blocked",
+    code: "INCOMPLETE_RECOVERY_EVIDENCE",
+    evidence,
+  });
+  expect(protocol.plan).toHaveBeenCalledTimes(2);
+});
