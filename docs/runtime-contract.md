@@ -35,13 +35,29 @@ dedicated filesystem in production. A missing, read-only, non-directory, empty
 without bootstrap, not fully initialized, stale, or if not suspicious data
 directory causes startup to fail closed.
 
-## Ports and probes
+## Elera traffic paths
 
-- `3306`: MariaDB client traffic.
-- `4444`: Galera SST.
-- `4567`: Galera replication.
-- `4568`: Galera IST.
-- `8080`: supervisor HTTP API and probes.
+Elera traffic between cluster workloads and nodes stays in the encrypted
+OVH vRack. OVH reports that the vRack encrypts physical server-to-server
+traffic. Cilium VXLAN encapsulates packets. It does not provide cryptographic
+encryption. The OVH vRack is the reported encryption boundary.
+
+Elera-layer TLS is not required on any listed path because each path stays in
+the encrypted OVH vRack.
+
+| Path                         | Source                        | Destination                                    | Protocol and port                     | TLS and authentication                                                                                           |
+| ---------------------------- | ----------------------------- | ---------------------------------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Supervisor API and WebSocket | Application, CLI, or operator | Kubernetes load balancer, then supervisor node | HTTP or WebSocket on TCP port `8080`  | Elera-layer TLS is not required. Traffic stays in the encrypted OVH vRack.                                       |
+| Direct SQL                   | Application using the client  | SQL node listed in the routing bundle          | MariaDB on TCP port `3306`            | Elera-layer TLS is not required. Traffic stays in the encrypted OVH vRack.                                       |
+| Peer API                     | Supervisor node               | Peer supervisor node                           | HTTP on TCP port `8080`               | Elera-layer TLS is not required. Traffic stays in the encrypted OVH vRack. Peer authentication remains required. |
+| Galera SST                   | Donor node                    | Joining node                                   | Galera SST on TCP port `4444`         | Elera-layer TLS is not required. Traffic stays in the encrypted OVH vRack.                                       |
+| Galera replication           | Each cluster member           | Other cluster members                          | Galera replication on TCP port `4567` | Elera-layer TLS is not required. Traffic stays in the encrypted OVH vRack.                                       |
+| Galera IST                   | Donor node                    | Joining node                                   | Galera IST on TCP port `4568`         | Elera-layer TLS is not required. Traffic stays in the encrypted OVH vRack.                                       |
+
+The supervisor does not proxy SQL traffic. Peer API requests require
+authentication. Network protection does not replace authentication.
+
+## Probes
 
 `/healthz` is a liveness endpoint and returns `200 ok` while the supervisor
 process is alive. `/readyz` returns `200` only when MariaDB is accepting work
