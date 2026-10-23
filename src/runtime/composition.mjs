@@ -32,13 +32,13 @@ export function createSupervisorComposition({
         log,
       })
     : memoryObservationStore;
-  const metadata = createMetadataService({ query });
   const managed = createManagedMetadata({
     query,
     identity,
     credentialKey: environment.ELERA_CREDENTIAL_KEY,
   });
-  const applications = createApplicationService({ query });
+  const metadata = createMetadataService({ query, tokenAccounts: managed.tokenAccounts });
+  const applications = createApplicationService({ query, tokenAccounts: managed.tokenAccounts });
   const managedAccounts = createManagedAccounts({ query });
   const reconciler = createMetadataReconciler({ managed, accounts: managedAccounts });
   const artifactStore = createArtifactStore({ query: optionalQuery });
@@ -48,6 +48,7 @@ export function createSupervisorComposition({
     metadata,
     managed,
     applications,
+    tokenAccounts: managed.tokenAccounts,
     managedAccounts,
     reconciler,
     artifactStore,

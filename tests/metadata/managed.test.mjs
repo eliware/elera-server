@@ -1,4 +1,4 @@
-import { expect, test } from "@jest/globals";
+import { expect, jest, test } from "@jest/globals";
 import { createManagedMetadata } from "../../src/metadata/managed.mjs";
 import { createManagedMetadataForTest } from "../../test-fixtures/managed-metadata.mjs";
 
@@ -18,6 +18,23 @@ test("requires the metadata query callback", () => {
       credentialKey: null,
     }),
   ).toBeDefined();
+});
+
+test("returns persistent SQL credentials for authenticated API tokens", async () => {
+  const tokenAccounts = { credentials: jest.fn(async ({ tokenId, root }) => ({ tokenId, root })) };
+  const managed = createManagedMetadata({
+    query: async () => [[]],
+    identity: { name: "node.example.test" },
+    tokenAccounts,
+  });
+  await expect(managed.sqlConnection({ root: true })).resolves.toEqual({
+    tokenId: undefined,
+    root: true,
+  });
+  await expect(managed.sqlConnection({ tokenId: "42" })).resolves.toEqual({
+    tokenId: "42",
+    root: undefined,
+  });
 });
 
 test("manages databases, identities, and scoped tokens without exposing policy SQL", async () => {

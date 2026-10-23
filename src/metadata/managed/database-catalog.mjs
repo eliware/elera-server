@@ -2,7 +2,7 @@ import { generate as generateSnowflake } from "@eliware/common";
 import { identifier, literal } from "../../accounts/sql.mjs";
 import { validName } from "./validation.mjs";
 
-export function createManagedDatabaseCatalog({ query, q }) {
+export function createManagedDatabaseCatalog({ query, q, tokenAccounts }) {
   const deleteOperations = new Map();
   return {
     async createDatabase({ application, databaseName }) {
@@ -21,6 +21,7 @@ export function createManagedDatabaseCatalog({ query, q }) {
         `INSERT INTO elera_meta.managed_databases (database_id, name, physical_name, application_name) VALUES (${literal(databaseId)}, ${literal(databaseName)}, ${literal(physicalName)}, ${literal(application)}) ON DUPLICATE KEY UPDATE application_name=VALUES(application_name), physical_name=VALUES(physical_name)`,
       );
       await query(`CREATE DATABASE IF NOT EXISTS ${identifier(physicalName)}`);
+      await tokenAccounts?.grantApplicationDatabase(application, physicalName);
       return { databaseId, application, database: databaseName, physicalName };
     },
     async listDatabases() {

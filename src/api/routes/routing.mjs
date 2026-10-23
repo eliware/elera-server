@@ -50,20 +50,21 @@ export async function handleRoutingRoute({
     return true;
   }
   if (path === "/api/v1/routing/bundle" && method === "GET") {
-    if (!allowed(auth, "credential:issue") && !allowed(auth, "credential:refresh")) return false;
+    if (!auth?.root && !auth?.tokenId) return false;
     const requestedIdentity = url.searchParams.get("identity");
     if (!auth?.root && requestedIdentity && requestedIdentity !== auth?.identity)
       throw Object.assign(new Error("identity is not approved for this token"), {
         statusCode: 403,
       });
     const requestedNodeIdentity = requestedIdentity ?? auth?.identity;
-    if (!requestedNodeIdentity)
-      throw Object.assign(new Error("identity is required"), { statusCode: 400 });
     response.json(200, {
       ok: true,
       operation: "routing.bundle",
       data: await routingBundles.lease({
         identity: requestedNodeIdentity,
+        root: auth?.root === true,
+        tokenId: auth?.tokenId,
+        name: auth?.name,
         application: auth?.application,
         database: auth?.database,
       }),

@@ -19,6 +19,7 @@ test("resolves scoped tokens to their application, database, identity, and scope
         [
           {
             name: "runtime-token",
+            tokenId: "42",
             application: "payments",
             database: "billing",
             physical_database: "elera_db_42",
@@ -33,6 +34,7 @@ test("resolves scoped tokens to their application, database, identity, and scope
 
   await expect(managed.authenticate(token)).resolves.toEqual({
     name: "runtime-token",
+    tokenId: "42",
     application: "payments",
     database: "billing",
     physicalDatabase: "elera_db_42",
@@ -61,6 +63,7 @@ test("keeps app-admin tokens application-scoped without assigning a database ide
       [
         {
           name: "app-admin-token",
+          tokenId: "77",
           application: "payments",
           database: null,
           identity: null,
@@ -73,6 +76,7 @@ test("keeps app-admin tokens application-scoped without assigning a database ide
 
   await expect(managed.authenticate(token)).resolves.toEqual({
     name: "app-admin-token",
+    tokenId: "77",
     application: "payments",
     database: null,
     identity: null,
@@ -84,9 +88,13 @@ test("issues and revokes scoped tokens with default scopes", async () => {
   const queries = [];
   const q = jest.fn(async (sql) => {
     queries.push(sql);
-    return sql.startsWith("SELECT") ? [[{ application: "payments", database: "billing" }]] : [[]];
+    if (sql.includes("SELECT i.application_name"))
+      return [[{ application: "payments", database: "billing" }]];
+    if (sql.includes("SELECT token_id")) return [[{ token_id: "42" }]];
+    return [[]];
   });
-  const lifecycle = createManagedTokenLifecycle({ q });
+  const tokenAccounts = { create: jest.fn(), revoke: jest.fn() };
+  const lifecycle = createManagedTokenLifecycle({ q, tokenAccounts });
   const issued = await lifecycle.issueToken({
     tokenName: "worker-token",
     application: "payments",
@@ -99,10 +107,24 @@ test("issues and revokes scoped tokens with default scopes", async () => {
     identity: "worker",
     scopes: [],
   });
-  expect(queries[1]).toContain("[]");
+  expect(queries[2]).toContain("[]");
+  expect(tokenAccounts.create).toHaveBeenCalledWith({
+    tokenId: "42",
+    application: "payments",
+    identity: "worker",
+    scopes: [],
+  });
   await expect(lifecycle.revokeToken()).rejects.toThrow("token is invalid");
   await expect(
     lifecycle.revokeToken({ tokenName: "worker-token", application: "payments" }),
+  ).resolves.toMatchObject({ revoked: true });
+  expect(tokenAccounts.revoke).toHaveBeenCalledWith("42");
+  const missingToken = createManagedTokenLifecycle({
+    q: async () => [[]],
+    tokenAccounts,
+  });
+  await expect(
+    missingToken.revokeToken({ tokenName: "missing", application: "payments" }),
   ).resolves.toMatchObject({ revoked: true });
 });
 
@@ -137,6 +159,7 @@ test("returns null for absent or unknown tokens and normalizes stored scopes", a
       [
         {
           name: "known-token",
+          tokenId: "42",
           application: "payments",
           database: "billing",
           identity: "worker",
@@ -157,6 +180,7 @@ test("returns null for absent or unknown tokens and normalizes stored scopes", a
       [
         {
           name: "known-token",
+          tokenId: "42",
           application: "payments",
           database: "billing",
           identity: "worker",

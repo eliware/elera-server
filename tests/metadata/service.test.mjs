@@ -1,4 +1,5 @@
 import { createMetadataService } from "../../src/metadata/service.mjs";
+import { expect, jest, test } from "@jest/globals";
 test("initializes metadata and verifies the schema", async () => {
   const calls = [];
   const query = async (sql) => {
@@ -24,6 +25,13 @@ test("initializes metadata and verifies the schema", async () => {
   expect(result.database).toBe("elera_meta");
   expect(calls.some((sql) => sql.includes("CREATE DATABASE"))).toBe(true);
   expect((await service.verify()).verified).toBe(true);
+});
+test("creates the persistent root SQL account during initialization", async () => {
+  const ensureRoot = jest.fn(async () => ({ username: "elera_root" }));
+  const service = createMetadataService({ query: async () => [[]], tokenAccounts: { ensureRoot } });
+  const result = await service.initialize({ ROOT_TOKEN: "root-token" });
+  expect(ensureRoot).toHaveBeenCalledTimes(1);
+  expect(result.rootSqlAccount).toEqual({ username: "elera_root" });
 });
 test("reports uninitialized metadata and validates dependencies", async () => {
   expect(() => createMetadataService({})).toThrow("query function");

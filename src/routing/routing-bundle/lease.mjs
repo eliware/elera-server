@@ -5,8 +5,26 @@ import { toBundleVersion } from "../bundle/version.mjs";
 
 export function createRoutingBundleLease({ managed, identity, environment, selection }) {
   return async function lease(request) {
-    const result = await managed.lease(request);
-    const leaseIdentity = resolveRoutingBundleIdentity(request, result, identity);
+    const tokenRequest = request.root === true || request.tokenId !== undefined;
+    const result = tokenRequest
+      ? await managed.sqlConnection(request).then((credentials) => ({
+          ...credentials,
+          application: request.application ?? "default",
+          database: request.database ?? "elera_meta",
+          physicalDatabase: request.physicalDatabase ?? "elera_meta",
+          identity: request.identity ?? (request.root ? "root" : (request.name ?? "token")),
+          nodeIdentity: identity.name,
+          expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        }))
+      : await managed.lease(request);
+    const leaseIdentity = tokenRequest
+      ? {
+          application: result.application,
+          database: result.database,
+          credentialIdentity: result.identity,
+          key: result.application,
+        }
+      : resolveRoutingBundleIdentity(request, result, identity);
     const { application, database, credentialIdentity, key } = leaseIdentity;
     const routes = await selection.resolve(key);
     const selected = routes.balanced.length ? routes : result.routes;

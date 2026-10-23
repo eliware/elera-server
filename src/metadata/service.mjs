@@ -1,6 +1,6 @@
 import { META_DATABASE, META_SCHEMA } from "./schema.mjs";
 import { ensureReplicationAccounts } from "./accounts.mjs";
-export function createMetadataService({ query, database = META_DATABASE }) {
+export function createMetadataService({ query, database = META_DATABASE, tokenAccounts }) {
   if (typeof query !== "function") throw new TypeError("query function is required");
   const scoped = (sql, params) =>
     query(sql.replaceAll("metadata", `\`${database}\`.metadata`), params);
@@ -20,6 +20,7 @@ export function createMetadataService({ query, database = META_DATABASE }) {
         database,
         schema: "current",
         accounts: await ensureReplicationAccounts({ query, environment }),
+        rootSqlAccount: environment.ROOT_TOKEN ? await tokenAccounts?.ensureRoot() : undefined,
         initialized: true,
       };
     },

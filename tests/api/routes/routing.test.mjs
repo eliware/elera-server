@@ -53,7 +53,7 @@ const context = (method, path, observations = [node], body = {}) => {
   };
 };
 
-test("serves calculated routes, refreshes bundles, and validates bundle identity", async () => {
+test("serves calculated routes, refreshes bundles, and creates a root SQL bundle", async () => {
   const healthy = context("GET", "/api/v1/routes");
   healthy.url = new URL("http://localhost/api/v1/routes?application=app");
   expect(await handleRoutingRoute(healthy)).toBe(true);
@@ -72,13 +72,22 @@ test("serves calculated routes, refreshes bundles, and validates bundle identity
   const bundle = context("GET", "/api/v1/routing/bundle");
   bundle.url = new URL("http://localhost/api/v1/routing/bundle?identity=id");
   expect(await handleRoutingRoute(bundle)).toBe(true);
-  await expect(handleRoutingRoute(context("GET", "/api/v1/routing/bundle"))).rejects.toMatchObject({
-    statusCode: 400,
+  expect(bundle.routingBundles.lease).toHaveBeenCalledWith({
+    identity: "id",
+    root: true,
+    tokenId: undefined,
+    name: undefined,
+    application: undefined,
+    database: undefined,
   });
+  const root = context("GET", "/api/v1/routing/bundle");
+  expect(await handleRoutingRoute(root)).toBe(true);
 });
 test("resolves a scoped token identity without a query selector and rejects mismatches", async () => {
   const scoped = context("GET", "/api/v1/routing/bundle");
   scoped.auth = {
+    tokenId: "42",
+    name: "worker",
     application: "payments",
     identity: "runtime",
     scopes: ["credential:issue"],
@@ -86,12 +95,16 @@ test("resolves a scoped token identity without a query selector and rejects mism
   expect(await handleRoutingRoute(scoped)).toBe(true);
   expect(scoped.routingBundles.lease).toHaveBeenCalledWith({
     identity: "runtime",
+    root: false,
+    tokenId: "42",
+    name: "worker",
     application: "payments",
     database: undefined,
   });
   const mismatch = context("GET", "/api/v1/routing/bundle");
   mismatch.url = new URL("http://localhost/api/v1/routing/bundle?identity=other");
   mismatch.auth = {
+    tokenId: "42",
     application: "payments",
     identity: "runtime",
     scopes: ["credential:issue"],

@@ -18,9 +18,15 @@ application resources. A runtime token resolves directly to:
 
 `application + database + identity + scopes`
 
-Each runtime token represents one database context. An application needing two
-databases uses two runtime tokens. Root credentials are platform-only and are
-do not passed to application workloads.
+Each runtime token represents one database context. An application that needs
+two databases uses two runtime tokens. Keep the root token out of application
+workloads.
+
+Each API token maps to its own MariaDB account. The account has a separate
+password and grants that match the token's role and database scopes. The server
+stores the password in encrypted metadata. The routing bundle returns the
+account credentials after the API token authenticates. Create the root account
+during initialization and grant it access to every database, with `elera_meta`.
 
 ## Application contract
 
@@ -37,10 +43,10 @@ SQL username, SQL password, node, or cluster settings.
 
 ## Routing bundle
 
-The supervisor returns the resolved application, database, identity, resource
-IDs, credentials, writer, readers, ordered failover nodes, bundle version,
-expiry, node identity, and port data. Routing changes are delivered through
-the WebSocket event stream, with HTTP API bundle retrieval as the recovery path.
+The supervisor returns application, database, identity, resource IDs, token
+credentials, writer, readers, failover nodes, bundle version, expiry, node
+identity, and port data. Routing changes use the WebSocket event stream. HTTP
+API bundle retrieval provides recovery.
 
 ## Authorization boundary
 
