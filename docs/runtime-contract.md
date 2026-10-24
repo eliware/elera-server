@@ -37,25 +37,25 @@ directory causes startup to fail closed.
 
 ## Elera traffic paths
 
-Elera traffic between cluster workloads and nodes stays in the encrypted
-OVH vRack. OVH reports that the vRack encrypts physical server-to-server
-traffic. Cilium VXLAN encapsulates packets. It does not provide cryptographic
-encryption. The OVH vRack is the reported encryption boundary.
+Elera traffic uses unencrypted OVH vRack and Cilium VXLAN paths. The OVH
+vRack provides private logical isolation. It does not encrypt server-to-server
+traffic. Cilium uses VXLAN for pod traffic. VXLAN encapsulates packets but does
+not encrypt them. Cilium WireGuard is disabled.
 
-Elera-layer TLS is not required on any listed path because each path stays in
-the encrypted OVH vRack.
+Application TLS and Galera TLS remain optional. No TLS is enabled on the paths
+listed here. The transport is unencrypted.
 
-| Path                         | Source                        | Destination                                    | Protocol and port                     | TLS and authentication                                                                                           |
-| ---------------------------- | ----------------------------- | ---------------------------------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Supervisor API and WebSocket | Application, CLI, or operator | Kubernetes load balancer, then supervisor node | HTTP or WebSocket on TCP port `8080`  | Elera-layer TLS is not required. Traffic stays in the encrypted OVH vRack.                                       |
-| Direct SQL                   | Application using the client  | SQL node listed in the routing bundle          | MariaDB on TCP port `3306`            | Elera-layer TLS is not required. Traffic stays in the encrypted OVH vRack.                                       |
-| Peer API                     | Supervisor node               | Peer supervisor node                           | HTTP on TCP port `8080`               | Elera-layer TLS is not required. Traffic stays in the encrypted OVH vRack. Peer authentication remains required. |
-| Galera SST                   | Donor node                    | Joining node                                   | Galera SST on TCP port `4444`         | Elera-layer TLS is not required. Traffic stays in the encrypted OVH vRack.                                       |
-| Galera replication           | Each cluster member           | Other cluster members                          | Galera replication on TCP port `4567` | Elera-layer TLS is not required. Traffic stays in the encrypted OVH vRack.                                       |
-| Galera IST                   | Donor node                    | Joining node                                   | Galera IST on TCP port `4568`         | Elera-layer TLS is not required. Traffic stays in the encrypted OVH vRack.                                       |
+| Path                         | Source                        | Destination                                    | Protocol and port                     | Current TLS and encryption state                                                 |
+| ---------------------------- | ----------------------------- | ---------------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------- |
+| Supervisor API and WebSocket | Application, CLI, or operator | Kubernetes load balancer, then supervisor node | HTTP or WebSocket on TCP port `8080`  | Unencrypted. Application TLS is optional and disabled for this path.             |
+| Direct SQL                   | Application using the client  | SQL node listed in the routing bundle          | MariaDB on TCP port `3306`            | Unencrypted. MariaDB TLS is optional and disabled for this path.                 |
+| Peer API                     | Supervisor node               | Peer supervisor node                           | HTTP on TCP port `8080`               | Unencrypted. TLS is optional and disabled. Peer authentication remains required. |
+| Galera SST                   | Donor node                    | Joining node                                   | Galera SST on TCP port `4444`         | Unencrypted. Galera TLS is optional and disabled.                                |
+| Galera replication           | Each cluster member           | Other cluster members                          | Galera replication on TCP port `4567` | Unencrypted. Galera TLS is optional and disabled.                                |
+| Galera IST                   | Donor node                    | Joining node                                   | Galera IST on TCP port `4568`         | Unencrypted. Galera TLS is optional and disabled.                                |
 
 The supervisor does not proxy SQL traffic. Peer API requests require
-authentication. Network protection does not replace authentication.
+authentication. Network isolation does not replace authentication.
 
 ## Probes
 

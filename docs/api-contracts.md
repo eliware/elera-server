@@ -268,8 +268,8 @@ POST /api/v1/credentials/revoke
 GET  /api/v1/routes
 ```
 
-The API may return credentials directly more than authenticated TLS or return an
-encrypted envelope, but durable records must contain ciphertext only.
+The API may send credentials through an authenticated TLS connection or in an
+encrypted envelope. Keep stored records as ciphertext.
 
 ## Managed resources
 
